@@ -118,17 +118,13 @@ export default function edgeoneAdapter(
           logger.info('Creating server-handler package.json...');
           createServerPackageJson(rootDir, serverDir);
           
-          // ⚠️ 不再复制 node_modules，让 EdgeOne 在部署时自动安装
-          // 原因：
-          // 1. 本地是 macOS，EdgeOne 是 Linux，Sharp native 绑定不兼容
-          // 2. EdgeOne 会自动检测 package.json 并执行 npm install
-          // 3. 自动安装的依赖会匹配目标平台（Linux）
-          logger.info('✓ Dependencies will be installed by EdgeOne on deploy (platform-specific)');
+          // EdgeOne 不会自动安装依赖，需要我们提供 node_modules
+          // 虽然本地是 macOS，但我们会在构建后提供安装 Linux Sharp 的说明
+          logger.info('Copying dependencies to server-handler...');
+          await copyDependencies(rootDir, serverDir, logger);
           
-          // 如果需要预装依赖（不推荐），取消下面三行的注释：
-          // logger.info('Copying dependencies to server-handler...');
-          // await copyDependencies(rootDir, serverDir, logger);
-          // optimizeNodeModules(serverDir, logger);
+          logger.info('Optimizing node_modules size...');
+          optimizeNodeModules(serverDir, logger);
           
           logger.info('Creating server entry index.mjs...');
           createServerEntryFile(serverDir);
