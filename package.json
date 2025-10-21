@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:edgeone": "npm run build && node scripts/replace-sharp-linux.js",
     "preview": "astro preview",
     "astro": "astro"
   },
