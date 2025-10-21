@@ -17,7 +17,6 @@ import { optimizeNodeModules } from './lib/optimizer.js';
 import { createServerPackageJson, createMetaConfig } from './lib/config.js';
 import { createServerEntryFile } from './lib/server-entry.js';
 import { cleanOutputDirectory } from './lib/clean.js';
-import { patchImageEndpoint } from './lib/patch-image.js';
 import { replaceSharpWithLinux } from './lib/replace-sharp.js';
 import type { EdgeOneAdapterOptions } from './lib/types.js';
 
@@ -130,10 +129,8 @@ export default function edgeoneAdapter(
           logger.info('Creating server entry index.mjs...');
           createServerEntryFile(serverDir);
           
-          // 修补 _image 端点，添加详细的错误信息
-          // index.mjs 已经使用真实域名，但仍然 patch 以获得详细调试信息
-          logger.info('Patching _image endpoint with debug information...');
-          patchImageEndpoint(serverDir, logger);
+          // 不需要 patch _image.astro.mjs 了！
+          // index.mjs 已经从 referer 提取真实域名，Astro 原始逻辑可以正常工作
           
           // 替换 Sharp 为 Linux 版本（EdgeOne 兼容性）
           await replaceSharpWithLinux(serverDir, logger);
