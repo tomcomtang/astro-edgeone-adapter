@@ -1,17 +1,39 @@
 ---
 interface Props {
-	date: Date;
+  date: Date | string;
 }
 
 const { date } = Astro.props;
+
+// 确保 date 是 Date 对象
+// 处理各种日期格式：Date 对象、ISO 字符串、'Jul 08 2022' 等
+let dateObj: Date;
+if (!date) {
+  // 没有传入日期，使用当前日期
+  dateObj = new Date();
+} else if (date instanceof Date) {
+  dateObj = date;
+} else if (typeof date === "string") {
+  // 尝试解析字符串日期
+  dateObj = new Date(date);
+  // 验证日期是否有效
+  if (isNaN(dateObj.getTime())) {
+    console.warn('[FormattedDate] Invalid date string:', date);
+    // 回退到当前日期
+    dateObj = new Date();
+  }
+} else {
+  console.warn('[FormattedDate] Invalid date type:', typeof date);
+  dateObj = new Date();
+}
 ---
 
-<time datetime={date.toISOString()}>
-	{
-		date.toLocaleDateString('en-us', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-		})
-	}
+<time datetime={dateObj.toISOString()}>
+  {
+    dateObj.toLocaleDateString("en-us", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
 </time>
