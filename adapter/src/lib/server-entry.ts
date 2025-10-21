@@ -187,10 +187,47 @@ const server = createServer(async (req, res) => {
     console.log(\`  - referer: \${req.headers.referer}\`);
     console.log(\`[EdgeOne Entry] All Headers: \${JSON.stringify(req.headers, null, 2)}\`);
     
-    // 构造完整的 URL
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers.host || 'localhost:${port}';
-    const url = new URL(req.url, \`\${protocol}://\${host}\`);
+    // 构造完整的 URL（使用真实域名，而不是内部域名）
+    // EdgeOne 不提供 x-forwarded-host，需要从 referer 或 origin 中提取
+    function getRealHost(headers) {
+      // 1. 尝试标准的 forwarded headers
+      const forwardedHeaders = [
+        'x-forwarded-host',
+        'x-real-host',
+        'x-original-host',
+        'x-host',
+        'forwarded-host',
+        'x-forwarded-server'
+      ];
+      
+      for (const h of forwardedHeaders) {
+        const value = headers[h];
+        if (value) return value;
+      }
+      
+      // 2. 从 origin header 提取
+      const origin = headers.origin;
+      if (origin && origin.startsWith('http')) {
+        try {
+          return new URL(origin).host;
+        } catch {}
+      }
+      
+      // 3. 从 referer header 提取（EdgeOne 会提供这个）
+      const referer = headers.referer;
+      if (referer && referer.startsWith('http')) {
+        try {
+          return new URL(referer).host;
+        } catch {}
+      }
+      
+      // 4. 回退到 host（内部域名）
+      return headers.host;
+    }
+    
+    const realHost = getRealHost(req.headers);
+    const realProto = req.headers['x-forwarded-proto'] || 'https';
+    const url = new URL(req.url, \`\${realProto}://\${realHost}\`);
     
     console.log(\`[EdgeOne Entry] Constructed URL: \${url.href}\`);
     console.log(\`[EdgeOne Entry] URL Origin: \${url.origin}\`);

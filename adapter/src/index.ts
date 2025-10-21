@@ -131,6 +131,7 @@ export default function edgeoneAdapter(
           createServerEntryFile(serverDir);
           
           // 修补 _image 端点，添加详细的错误信息
+          // index.mjs 已经使用真实域名，但仍然 patch 以获得详细调试信息
           logger.info('Patching _image endpoint with debug information...');
           patchImageEndpoint(serverDir, logger);
           
