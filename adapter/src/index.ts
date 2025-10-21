@@ -18,6 +18,7 @@ import { createServerPackageJson, createMetaConfig } from './lib/config.js';
 import { createServerEntryFile } from './lib/server-entry.js';
 import { cleanOutputDirectory } from './lib/clean.js';
 import { patchImageEndpoint } from './lib/patch-image.js';
+import { replaceSharpWithLinux } from './lib/replace-sharp.js';
 import type { EdgeOneAdapterOptions } from './lib/types.js';
 
 /**
@@ -132,6 +133,9 @@ export default function edgeoneAdapter(
           // 修补 _image 端点，添加详细的错误信息
           logger.info('Patching _image endpoint with debug information...');
           patchImageEndpoint(serverDir, logger);
+          
+          // 替换 Sharp 为 Linux 版本（EdgeOne 兼容性）
+          await replaceSharpWithLinux(serverDir, logger);
         }
 
         // 生成路由配置文件

@@ -10,4 +10,5 @@ export * from './config.js';
 export * from './server-entry.js';
 export * from './clean.js';
 export * from './patch-image.js';
+export * from './replace-sharp.js';
 
