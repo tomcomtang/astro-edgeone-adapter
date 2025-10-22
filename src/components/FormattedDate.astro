@@ -18,12 +18,12 @@ if (!date) {
   dateObj = new Date(date);
   // 验证日期是否有效
   if (isNaN(dateObj.getTime())) {
-    console.warn('[FormattedDate] Invalid date string:', date);
+    console.warn("[FormattedDate] Invalid date string:", date);
     // 回退到当前日期
     dateObj = new Date();
   }
 } else {
-  console.warn('[FormattedDate] Invalid date type:', typeof date);
+  console.warn("[FormattedDate] Invalid date type:", typeof date);
   dateObj = new Date();
 }
 ---

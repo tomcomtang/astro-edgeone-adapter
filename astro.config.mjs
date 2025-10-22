@@ -8,7 +8,7 @@ import edgeone from './adapter/src/index.ts';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://example.com',
-	output: 'server', // 启用 SSR 模式，可改为 'static' 或 'hybrid'
+	output: 'server', // SSR 模式
 	adapter: edgeone({
 		outDir: '.edgeone'
 	}),

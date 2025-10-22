@@ -103,49 +103,30 @@ async function handleResponse(res, response) {
     if (response instanceof Response) {
       const headers = Object.fromEntries(response.headers);
       
-      // 检查是否是流式响应
-      const isStream = response.body && (
-        response.headers.get('content-type')?.includes('text/event-stream') ||
-        response.headers.get('transfer-encoding')?.includes('chunked') ||
-        response.body instanceof ReadableStream ||
-        typeof response.body.pipe === 'function'
-      );
-
-      if (isStream) {
-        // 设置流式响应所需的头部
-        const streamHeaders = { ...headers };
-        if (response.headers.get('content-type')?.includes('text/event-stream')) {
-          streamHeaders['Content-Type'] = 'text/event-stream';
-        }
-
-        res.writeHead(response.status, streamHeaders);
-
-        if (typeof response.body.pipe === 'function') {
-          response.body.pipe(res);
-        } else {
-          const reader = response.body.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              if (value instanceof Uint8Array || Buffer.isBuffer(value)) {
-                res.write(value);
-              } else {
-                const chunk = new TextDecoder().decode(value);
-                res.write(chunk);
-              }
-            }
-          } finally {
-            reader.releaseLock();
-            res.end();
-          }
+      // EdgeOne 修复：使用 arrayBuffer 一次性读取，避免 chunked encoding 问题
+      // 移除 content-length，让 Node.js 自动处理
+      delete headers['content-length'];
+      delete headers['Content-Length'];
+      
+      if (response.body) {
+        try {
+          // 一次性读取所有内容
+          const buffer = await response.arrayBuffer();
+          
+          // 设置正确的 Content-Length
+          headers['Content-Length'] = buffer.byteLength.toString();
+          
+          res.writeHead(response.status, headers);
+          res.end(Buffer.from(buffer));
+        } catch (bufferError) {
+          console.error('Buffer read error:', bufferError);
+          res.writeHead(500);
+          res.end('Internal Server Error');
         }
       } else {
-        // 普通响应
+        // 没有 body
         res.writeHead(response.status, headers);
-        const body = await response.text();
-        res.end(body);
+        res.end();
       }
     } else {
       // 非 Response 对象，直接返回 JSON
