@@ -15,7 +15,6 @@ export function optimizeNodeModules(serverDir: string, logger: Logger): void {
     return;
   }
   
-  logger.info('Optimizing node_modules size...');
   cleanDirectory(nodeModulesPath, logger);
 }
 
@@ -75,6 +74,9 @@ function cleanDirectory(dir: string, logger: Logger): void {
   }
   
   traverse(dir);
-  logger.info(`Removed ${removedCount} unnecessary files/directories for optimization`);
+  
+  if (removedCount > 0) {
+    logger.info(`Optimized node_modules: removed ${removedCount} unnecessary files`);
+  }
 }
 

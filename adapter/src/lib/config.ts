@@ -7,23 +7,15 @@ import { join } from 'node:path';
 import type { MetaConfig, RouteConfig } from './types.js';
 
 /**
- * 创建server-handler的package.json
+ * 创建简化的 server-handler package.json（只包含 type: module）
+ * 步骤3：确保 Linux Sharp 安装后，只写入 type: module
  */
-export function createServerPackageJson(rootDir: string, serverDir: string): void {
-  const rootPackageJson = JSON.parse(
-    readFileSync(join(rootDir, 'package.json'), 'utf-8')
-  );
-  
+export function createSimpleServerPackageJson(serverDir: string): void {
   const serverPackageJson = {
     name: 'edgeone-server-handler',
     type: 'module',
     version: '1.0.0',
-    private: true,
-    dependencies: {
-      astro: rootPackageJson.dependencies?.astro || 'latest',
-      // 添加 sharp 依赖，让 EdgeOne 在部署时根据服务器平台自动安装正确的 native 绑定
-      sharp: rootPackageJson.dependencies?.sharp || rootPackageJson.devDependencies?.sharp || '^0.34.0',
-    },
+    private: true
   };
   
   writeFileSync(

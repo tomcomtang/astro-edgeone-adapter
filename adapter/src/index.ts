@@ -6,18 +6,19 @@
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
-import { cpSync, mkdirSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { 
   PACKAGE_NAME, 
   ASSETS_DIR, 
   SERVER_HANDLER_DIR 
 } from './lib/constants.js';
-import { copyDependencies } from './lib/dependencies.js';
+import { analyzeDependencies, copyDependenciesExcludingSharp } from './lib/dependencies.js';
+import { checkAndInstallLinuxSharp } from './lib/native-packages.js';
+import { createSimpleServerPackageJson, createMetaConfig } from './lib/config.js';
 import { optimizeNodeModules } from './lib/optimizer.js';
-import { createServerPackageJson, createMetaConfig } from './lib/config.js';
 import { createServerEntryFile } from './lib/server-entry.js';
 import { cleanOutputDirectory } from './lib/clean.js';
-import { replaceSharpWithLinux } from './lib/replace-sharp.js';
 import type { EdgeOneAdapterOptions } from './lib/types.js';
 
 /**
@@ -115,25 +116,33 @@ export default function edgeoneAdapter(
           
           const rootDir = fileURLToPath(_config.root);
           
-          logger.info('Creating server-handler package.json...');
-          createServerPackageJson(rootDir, serverDir);
+          // 按照要求的4个步骤处理依赖
+          logger.info('Starting dependency processing with 4 steps...');
           
-          // EdgeOne 不会自动安装依赖，需要我们提供 node_modules
-          // 虽然本地是 macOS，但我们会在构建后提供安装 Linux Sharp 的说明
-          logger.info('Copying dependencies to server-handler...');
-          await copyDependencies(rootDir, serverDir, logger);
+          // 步骤1：@vercel/nft 分析构建结果的包依赖
+          logger.info('Step 1: Analyzing dependencies with @vercel/nft...');
+          const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger);
+          logger.info(`Found ${packageNames.size} package dependencies`);
+          
+          // 步骤2：检测是否依赖 Sharp 包，如果是则安装 Linux 版本
+          logger.info('Step 2: Checking and installing Linux Sharp if needed...');
+          await checkAndInstallLinuxSharp(serverDir, packageNames, logger);
+          
+          // 步骤3：确保 Linux Sharp 安装后，只写入 type: module
+          logger.info('Step 3: Creating simplified package.json (type: module only)...');
+          createSimpleServerPackageJson(serverDir);
+          
+          // 步骤4：拷贝除 Sharp 外的其他依赖包
+          logger.info('Step 4: Copying dependencies (excluding Sharp)...');
+          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger);
+          
+          logger.info('✅ All 4 dependency processing steps completed!');
           
           logger.info('Optimizing node_modules size...');
           optimizeNodeModules(serverDir, logger);
           
           logger.info('Creating server entry index.mjs...');
           createServerEntryFile(serverDir);
-          
-          // 不需要 patch _image.astro.mjs 了！
-          // index.mjs 已经从 referer 提取真实域名，Astro 原始逻辑可以正常工作
-          
-          // 替换 Sharp 为 Linux 版本（EdgeOne 兼容性）
-          await replaceSharpWithLinux(serverDir, logger);
         }
 
         // 生成路由配置文件
