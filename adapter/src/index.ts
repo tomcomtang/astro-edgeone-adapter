@@ -52,7 +52,7 @@ export default function edgeoneAdapter(
   
   // 保存配置信息
   let _config: AstroConfig;
-  let _buildOutput: 'static' | 'server' | 'hybrid';
+  let _buildOutput: 'static' | 'server';
 
   return {
     name: PACKAGE_NAME,
@@ -92,7 +92,7 @@ export default function edgeoneAdapter(
         mkdirSync(edgeoneDir, { recursive: true });
         mkdirSync(staticDir, { recursive: true });
         
-        if (_buildOutput === 'server' || _buildOutput === 'hybrid') {
+        if (_buildOutput === 'server') {
           mkdirSync(serverDir, { recursive: true });
         }
 
@@ -107,7 +107,7 @@ export default function edgeoneAdapter(
         });
 
         // 处理服务端文件
-        if (_buildOutput === 'server' || _buildOutput === 'hybrid') {
+        if (_buildOutput === 'server') {
           const sourceServerDir = _config.build.server;
           cpSync(fileURLToPath(sourceServerDir), serverDir, {
             recursive: true,
@@ -150,7 +150,7 @@ export default function edgeoneAdapter(
         createMetaConfig(routes, edgeoneDir);
 
         logger.info(`Copying static files to ${outDir}/${ASSETS_DIR}/`);
-        if (_buildOutput === 'server' || _buildOutput === 'hybrid') {
+        if (_buildOutput === 'server') {
           logger.info(`Copying server files to ${outDir}/${SERVER_HANDLER_DIR}/`);
         }
         logger.info(`Build complete! Ready to deploy to EdgeOne Pages.`);

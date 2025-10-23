@@ -1,0 +1,262 @@
+---
+// api/[...slug].astro - API 路由处理页面
+// 这个文件处理所有的 API 请求
+import { getAllProjects, getProjectById, createProject, updateProject, deleteProject, getProjectCategories } from '../../actions/projects.ts';
+import { registerUser, loginUser, getUserProfile, updateUserProfile, uploadFile, getAllUsers } from '../../actions/user.ts';
+
+// 获取路由参数
+const { slug } = Astro.params;
+const path = Array.isArray(slug) ? slug.join('/') : slug || '';
+
+// 处理不同的 API 请求
+if (Astro.request.method === 'GET') {
+  // GET 请求处理
+  if (path === 'projects') {
+    const result = await getAllProjects(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
+    });
+  }
+  
+  if (path === 'projects/categories') {
+    const result = await getProjectCategories();
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path.startsWith('projects/')) {
+    const result = await getProjectById(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 404,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'user/profile') {
+    const result = await getUserProfile(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'users') {
+    const result = await getAllUsers(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+}
+
+if (Astro.request.method === 'POST') {
+  // POST 请求处理
+  if (path === 'register') {
+    const formData = await Astro.request.formData();
+    const result = await registerUser(formData);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 201 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'login') {
+    const formData = await Astro.request.formData();
+    const result = await loginUser(formData);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'projects') {
+    const formData = await Astro.request.formData();
+    const result = await createProject(formData);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 201 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'upload') {
+    const formData = await Astro.request.formData();
+    const result = await uploadFile(formData);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+}
+
+if (Astro.request.method === 'PUT') {
+  // PUT 请求处理
+  if (path.startsWith('projects/')) {
+    const result = await updateProject(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+  
+  if (path === 'user/profile') {
+    const result = await updateUserProfile(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+}
+
+if (Astro.request.method === 'DELETE') {
+  // DELETE 请求处理
+  if (path.startsWith('projects/')) {
+    const result = await deleteProject(Astro.request);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+}
+
+if (Astro.request.method === 'OPTIONS') {
+  // CORS 预检请求
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
+// 404 - 未找到的 API 端点
+return new Response(JSON.stringify({
+  success: false,
+  error: 'API endpoint not found'
+}), {
+  status: 404,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
+  }
+});
+---
+
+<div class="api-info">
+  <h1>API 路由处理</h1>
+  <p>这个页面处理所有的 API 请求，包括项目案例管理、用户管理等功能。</p>
+
+  <div class="api-endpoints">
+    <h2>项目案例 API：</h2>
+    <ul>
+      <li><code>GET /api/projects</code> - 获取项目列表</li>
+      <li><code>GET /api/projects/categories</code> - 获取项目分类</li>
+      <li><code>GET /api/projects?id=xxx</code> - 获取单个项目详情</li>
+      <li><code>POST /api/projects</code> - 创建新项目</li>
+      <li><code>PUT /api/projects?id=xxx</code> - 更新项目</li>
+      <li><code>DELETE /api/projects?id=xxx</code> - 删除项目</li>
+    </ul>
+    
+    <h2>用户管理 API：</h2>
+    <ul>
+      <li><code>POST /api/register</code> - 用户注册</li>
+      <li><code>POST /api/login</code> - 用户登录</li>
+      <li><code>GET /api/user/profile</code> - 获取用户信息</li>
+      <li><code>PUT /api/user/profile</code> - 更新用户信息</li>
+      <li><code>POST /api/upload</code> - 文件上传</li>
+      <li><code>GET /api/users</code> - 获取所有用户（管理员）</li>
+    </ul>
+  </div>
+
+  <div class="api-docs">
+    <h2>API 文档</h2>
+    <p>详细的 API 文档和示例请查看 <a href="/actions">Actions 示例页面</a>。</p>
+    <p>项目案例展示请查看 <a href="/projects">项目案例页面</a>。</p>
+  </div>
+</div>
+
+<style>
+  .api-info {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+
+  .api-endpoints {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--theme-bg-secondary);
+    border-radius: 8px;
+  }
+
+  .api-endpoints ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .api-endpoints li {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background: var(--theme-bg-code);
+    border-radius: 4px;
+    font-family: "Fira Code", "Monaco", "Consolas", monospace;
+  }
+
+  .api-docs {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--theme-bg-secondary);
+    border-radius: 8px;
+  }
+
+  .api-docs a {
+    color: var(--theme-accent);
+    text-decoration: none;
+  }
+
+  .api-docs a:hover {
+    text-decoration: underline;
+  }
+</style>
