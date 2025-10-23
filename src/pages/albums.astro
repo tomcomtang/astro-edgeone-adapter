@@ -1,0 +1,28 @@
+---
+// albums.astro - 相册集锦页面
+import Layout from "../layouts/BlogPost.astro";
+// @ts-ignore
+import Albums from "../components/Albums.vue";
+---
+
+<Layout title="相册集锦 - 我的摄影作品" description="" pubDate={new Date()}>
+  <Albums client:load />
+</Layout>
+
+<style>
+  /* 覆盖 BlogPost 布局的宽度限制 */
+  main {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .prose {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  article {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+</style>

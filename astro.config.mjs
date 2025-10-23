@@ -3,6 +3,7 @@
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import react from '@astrojs/react';
+import vue from '@astrojs/vue';
 import { defineConfig } from 'astro/config';
 import edgeone from './adapter/src/index.ts';
 
@@ -13,7 +14,7 @@ export default defineConfig({
 	adapter: edgeone({
 		outDir: '.edgeone'
 	}),
-	integrations: [mdx(), sitemap(), react()],
+	integrations: [mdx(), sitemap(), react(), vue()],
 });
 
 // 如果需要记录 hooks 参数，可以使用：
