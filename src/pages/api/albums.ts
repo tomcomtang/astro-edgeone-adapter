@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getAllAlbums, getAlbumById, createAlbum, updateAlbum, deleteAlbum, getAlbumCategories } from '../../actions/albums';
+import { getAllAlbums, getAlbumById, createAlbum, updateAlbum, deleteAlbum, getAlbumCategories } from './albums/data';
 
 export const GET: APIRoute = async ({ request, url }) => {
   const pathname = url.pathname;

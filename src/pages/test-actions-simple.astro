@@ -1,0 +1,63 @@
+---
+import Layout from "../layouts/BlogPost.astro";
+---
+
+<Layout
+  title="测试 Actions 接口"
+  description="测试 Astro Actions 接口是否正常工作"
+  pubDate={new Date()}
+>
+  <div id="test-results">
+    <h2>Actions 测试结果</h2>
+    <div id="loading">正在测试...</div>
+    <div id="error" style="display: none; color: red;"></div>
+    <div id="success" style="display: none; color: green;"></div>
+  </div>
+</Layout>
+
+<script>
+  import { actions } from "astro:actions";
+
+  async function testActions() {
+    const loadingEl = document.getElementById("loading");
+    const errorEl = document.getElementById("error");
+    const successEl = document.getElementById("success");
+
+    try {
+      console.log("开始测试 Actions...");
+      console.log("actions 对象:", actions);
+
+      const { data, error } = await actions.getAllProjects();
+
+      console.log("Actions 返回结果:");
+      console.log("data:", data);
+      console.log("error:", error);
+
+      if (error) {
+        errorEl.textContent = `错误: ${error.message || error}`;
+        errorEl.style.display = "block";
+        loadingEl.style.display = "none";
+      } else if (data) {
+        successEl.innerHTML = `
+          <h3>成功!</h3>
+          <p>收到 ${Array.isArray(data) ? data.length : "未知数量"} 个项目</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+        successEl.style.display = "block";
+        loadingEl.style.display = "none";
+      } else {
+        errorEl.textContent = "没有收到数据";
+        errorEl.style.display = "block";
+        loadingEl.style.display = "none";
+      }
+    } catch (err) {
+      console.error("测试失败:", err);
+      errorEl.textContent = `测试失败: ${err.message}`;
+      errorEl.style.display = "block";
+      loadingEl.style.display = "none";
+    }
+  }
+
+  // 页面加载后立即测试
+  testActions();
+</script>

@@ -29,6 +29,34 @@ if (!globalThis.crypto) {
   globalThis.crypto = webcrypto;
 }
 
+// Polyfill for fetch API with duplex support for EdgeOne compatibility
+if (!globalThis.fetch) {
+  try {
+    const { fetch: nodeFetch } = require('node:fetch');
+    globalThis.fetch = nodeFetch;
+  } catch (e) {
+    // Fallback to undici if node:fetch is not available
+    try {
+      const { fetch: undiciFetch } = require('undici');
+      globalThis.fetch = undiciFetch;
+    } catch (e2) {
+      console.warn('No fetch implementation available');
+    }
+  }
+}
+
+// Override fetch to automatically add duplex option for POST requests with body
+if (globalThis.fetch) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = function(input, init) {
+    // If it's a POST request with a body, add duplex: 'half'
+    if (init && init.method === 'POST' && init.body && !init.duplex) {
+      init.duplex = 'half';
+    }
+    return originalFetch.call(this, input, init);
+  };
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = ${port};
 
@@ -57,45 +85,40 @@ function getMimeType(filePath) {
   return MIME_TYPES[ext] || 'application/octet-stream';
 }
 
-// 实时流转换函数
-function createReadableStreamFromRequest(req) {
-  return new ReadableStream({
-    start(controller) {
-      req.on('data', chunk => {
-        // 将Buffer转换为Uint8Array
-        const uint8Array = new Uint8Array(chunk);
-        controller.enqueue(uint8Array);
-      });
-      
-      req.on('end', () => {
-        controller.close();
-      });
-      
-      req.on('error', error => {
-        controller.error(error);
-      });
-    },
+// 完全避免流式处理 - 直接读取请求体并验证 JSON
+async function getRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', chunk => {
+      chunks.push(chunk);
+    });
     
-    cancel() {
-      // 清理资源
-      req.destroy();
-    }
+    req.on('end', () => {
+      const body = Buffer.concat(chunks).toString();
+      
+      // 验证 JSON 格式
+      try {
+        if (body.trim()) {
+          JSON.parse(body); // 验证是否为有效 JSON
+        }
+        resolve(body);
+      } catch (jsonError) {
+        console.error('Invalid JSON in request body:', body);
+        reject(new TypeError('Invalid JSON format'));
+      }
+    });
+    
+    req.on('error', reject);
   });
 }
 
 async function handleResponse(res, response) {
-  const startTime = Date.now();
-  
   if (!response) {
     res.writeHead(404);
     res.end(JSON.stringify({
-      error: "[EdgeOne Router] Route Not Found - 404",
-      message: "The requested path does not match any route in Astro",
-      debug: "This 404 comes from index.mjs handleResponse",
-      timestamp: new Date().toISOString()
+      error: "Route Not Found",
+      message: "The requested path does not match any route in Astro"
     }));
-    const endTime = Date.now();
-    console.log(\`[EdgeOne Debug] HandleResponse: 404 Not Found - \${endTime - startTime}ms\`);
     return;
   }
 
@@ -143,9 +166,6 @@ async function handleResponse(res, response) {
       error: "Internal Server Error",
       message: error.message
     }));
-  } finally {
-    const endTime = Date.now();
-    console.log(\`HandleResponse: \${response?.status || 'unknown'} - \${endTime - startTime}ms\`);
   }
 }
 
@@ -154,20 +174,6 @@ const handlerPromise = import('./entry.mjs');
 
 const server = createServer(async (req, res) => {
   try {
-    const requestStartTime = Date.now();
-    
-    // === 详细的入口日志 ===
-    console.log(\`\\n[EdgeOne Entry] ========================================\`);
-    console.log(\`[EdgeOne Entry] Request: \${req.method} \${req.url}\`);
-    console.log(\`[EdgeOne Entry] Headers:\`);
-    console.log(\`  - host: \${req.headers.host}\`);
-    console.log(\`  - x-forwarded-host: \${req.headers['x-forwarded-host']}\`);
-    console.log(\`  - x-forwarded-proto: \${req.headers['x-forwarded-proto']}\`);
-    console.log(\`  - x-real-host: \${req.headers['x-real-host']}\`);
-    console.log(\`  - origin: \${req.headers.origin}\`);
-    console.log(\`  - referer: \${req.headers.referer}\`);
-    console.log(\`[EdgeOne Entry] All Headers: \${JSON.stringify(req.headers, null, 2)}\`);
-    
     // 构造完整的 URL（使用真实域名，而不是内部域名）
     // EdgeOne 不提供 x-forwarded-host，需要从 referer 或 origin 中提取
     function getRealHost(headers) {
@@ -210,32 +216,20 @@ const server = createServer(async (req, res) => {
     const realProto = req.headers['x-forwarded-proto'] || 'https';
     const url = new URL(req.url, \`\${realProto}://\${realHost}\`);
     
-    console.log(\`[EdgeOne Entry] Constructed URL: \${url.href}\`);
-    console.log(\`[EdgeOne Entry] URL Origin: \${url.origin}\`);
-    
     // 处理静态资源请求（用于 _image 端点的内部 fetch）
     // 支持路径：/_astro/*, /fonts/*, /favicon.svg 等
     const staticPrefixes = ['/_astro/', '/fonts/', '/favicon.svg'];
     const isStaticRequest = staticPrefixes.some(prefix => url.pathname.startsWith(prefix) || url.pathname === prefix);
-    
-    console.log(\`[EdgeOne Entry] Is static request: \${isStaticRequest}, path: \${url.pathname}\`);
     
     if (isStaticRequest) {
       // 从 ../assets/ 读取静态文件
       const assetsDir = join(__dirname, '..', 'assets');
       const filePath = join(assetsDir, url.pathname);
       
-      console.log(\`[EdgeOne Debug] Static file check:\`);
-      console.log(\`[EdgeOne Debug]   - assetsDir: \${assetsDir}\`);
-      console.log(\`[EdgeOne Debug]   - filePath: \${filePath}\`);
-      console.log(\`[EdgeOne Debug]   - exists: \${existsSync(filePath)}\`);
-      
       if (existsSync(filePath)) {
         try {
           const content = readFileSync(filePath);
           const mimeType = getMimeType(filePath);
-          
-          console.log(\`[EdgeOne Debug] Serving static file, size: \${content.length} bytes\`);
           
           res.writeHead(200, {
             'Content-Type': mimeType,
@@ -243,41 +237,39 @@ const server = createServer(async (req, res) => {
             'Content-Length': content.length
           });
           res.end(content);
-          
-          const requestEndTime = Date.now();
-          console.log(\`[EdgeOne Debug] Static file served: \${url.pathname} - \${requestEndTime - requestStartTime}ms\`);
           return;
         } catch (error) {
-          console.error(\`[EdgeOne Debug] Error serving static file \${url.pathname}:\`, error);
+          console.error(\`Error serving static file \${url.pathname}:\`, error);
           // 继续到 SSR 处理
         }
-      } else {
-        console.log(\`[EdgeOne Debug] Static file not found: \${filePath}\`);
       }
     }
     
     // Import handler
     const { default: handler } = await handlerPromise;
     
-    // 构造标准的 Request 对象
+    // 构造标准的 Request 对象 - 避免流式处理
+    let body = undefined;
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      body = await getRequestBody(req);
+    }
+    
+    // 处理 headers
+    const headers = new Headers(req.headers);
+    
     const request = new Request(url.toString(), {
       method: req.method,
-      headers: req.headers,
-      body: req.method !== 'GET' && req.method !== 'HEAD' 
-        ? createReadableStreamFromRequest(req) 
-        : undefined,
+      headers: headers,
+      body: body,
     });
 
     // 调用 Astro handler
     const response = await handler(request);
-
-    const requestEndTime = Date.now();
-    console.log(\`Request path: \${url.pathname}\`);
-    console.log(\`Request processing time: \${requestEndTime - requestStartTime}ms\`);
     
     await handleResponse(res, response);
   } catch (error) {
     console.error('SSR Error:', error);
+    
     res.statusCode = 500;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.end('<html><body><h1>Error</h1><p>' + error.message + '</p></body></html>');

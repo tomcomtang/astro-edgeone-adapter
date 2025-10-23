@@ -1,11 +1,11 @@
 /**
- * 相册集锦 Actions
+ * 相册数据存储
  * 
- * 这个文件展示了如何在 Astro EdgeOne 适配器中实现相册管理
+ * 这个文件包含相册的模拟数据，实际项目中应该使用数据库
  */
 
-// 相册数据配置
-const albums: Array<{
+// 相册类型定义
+export interface Album {
   id: string;
   title: string;
   description: string;
@@ -17,7 +17,10 @@ const albums: Array<{
   featured: boolean;
   createdAt: Date;
   updatedAt: Date;
-}> = [
+}
+
+// 模拟相册数据存储
+export const albums: Album[] = [
   {
     id: '1',
     title: '城市夜景摄影',

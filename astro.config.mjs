@@ -7,14 +7,16 @@ import vue from '@astrojs/vue';
 import { defineConfig } from 'astro/config';
 import edgeone from './adapter/src/index.ts';
 
+import svelte from '@astrojs/svelte';
+
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://astro-edgeone-adapter.edgeone.run/', // 必需：用于生成 canonical URLs
-	output: 'server', // SSR 模式
-	adapter: edgeone({
-		outDir: '.edgeone'
-	}),
-	integrations: [mdx(), sitemap(), react(), vue()],
+    site: 'https://astro-edgeone-adapter.edgeone.run/', // 必需：用于生成 canonical URLs
+    output: 'server', // SSR 模式
+    adapter: edgeone({
+        outDir: '.edgeone'
+    }),
+    integrations: [mdx(), sitemap(), react(), vue(), svelte()],
 });
 
 // 如果需要记录 hooks 参数，可以使用：
