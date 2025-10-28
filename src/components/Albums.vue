@@ -103,25 +103,10 @@ const albums = ref<Album[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-// 图片映射 - 动态构建图片路径
+// 图片映射 - 直接使用原图路径
 const getImageUrl = (imageName: string): string => {
-  // 在开发模式下使用本地文件系统路径
-  if (import.meta.env.DEV) {
-    return `/_image?href=%2F%40fs%2FUsers%2Ftomcomtang%2FVscodeProjects%2Fvideo_fe%2Fedgeone-pages-templates%2Fastro-examples%2Fastro-edgeone-adapter%2Fsrc%2Fassets%2F${imageName}%3ForigWidth%3D960%26origHeight%3D480%26origFormat%3Djpg&w=300&h=270&f=webp`;
-  }
-  
-  // 在生产模式下使用构建后的静态资源路径
-  const imageMap: Record<string, string> = {
-    'blog-placeholder-1.jpg': 'blog-placeholder-1.Bx0Zcyzv.jpg',
-    'blog-placeholder-2.jpg': 'blog-placeholder-2.1WQRLJGH.jpg',
-    'blog-placeholder-3.jpg': 'blog-placeholder-3.ijrf8Ohr.jpg',
-    'blog-placeholder-4.jpg': 'blog-placeholder-4.gLBdjEDe.jpg',
-    'blog-placeholder-5.jpg': 'blog-placeholder-5.CB3Xi-gp.jpg',
-    'blog-placeholder-about.jpg': 'blog-placeholder-about.BtEdEmGp.jpg',
-  };
-  
-  const hashedName = imageMap[imageName] || imageName;
-  return `/_image?href=%2F_astro%2F${hashedName}&w=300&h=270&f=webp`;
+  // 直接使用原图路径，不使用 Astro 图片处理
+  return `/assets/${imageName}`;
 };
 
 // 加载相册数据

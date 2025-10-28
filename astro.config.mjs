@@ -28,5 +28,11 @@ export default defineConfig({
         ],
     },
     
+    image: {
+        service: {
+            entrypoint: undefined
+        }
+    },
+    
     integrations: [mdx(), sitemap(), react(), vue(), svelte()]
 });

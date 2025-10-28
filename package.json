@@ -29,6 +29,7 @@
   "devDependencies": {
     "@astrojs/netlify": "^6.6.0",
     "@types/mdx": "^2.0.13",
-    "@vercel/nft": "^0.30.3"
+    "@vercel/nft": "^0.30.3",
+    "netlify-cli": "^21.6.0"
   }
 }

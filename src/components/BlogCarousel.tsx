@@ -61,7 +61,7 @@ export default function BlogCarousel({ posts }: Props) {
               <div className="slide-image-wrapper">
                 {post.data.heroImage && (
                   <img
-                    src={post.data.heroImage.src}
+                    src={post.data.heroImage}
                     alt={post.data.title}
                     className="slide-image"
                   />

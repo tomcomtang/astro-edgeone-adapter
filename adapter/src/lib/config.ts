@@ -58,7 +58,8 @@ function convertRouteToRegex(route: string): string {
 
 export function createMetaConfig(
   routes: any[],
-  edgeoneDir: string
+  edgeoneDir: string,
+  serverHandlerDir: string
 ): void {
   const metaData: MetaConfig = {
     conf: {
@@ -85,7 +86,12 @@ export function createMetaConfig(
     }),
   };
 
-  const metaPath = join(edgeoneDir, 'meta.json');
-  writeFileSync(metaPath, JSON.stringify(metaData, null, 2));
+  // 生成到 server-handler 目录
+  const serverMetaPath = join(serverHandlerDir, 'meta.json');
+  writeFileSync(serverMetaPath, JSON.stringify(metaData, null, 2));
+  
+  // 同时也生成到 .edgeone 目录
+  const edgeoneMetaPath = join(edgeoneDir, 'meta.json');
+  writeFileSync(edgeoneMetaPath, JSON.stringify(metaData, null, 2));
 }
 

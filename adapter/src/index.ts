@@ -6,7 +6,7 @@
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
-import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { globSync } from 'tinyglobby';
 import { 
@@ -15,7 +15,6 @@ import {
   SERVER_HANDLER_DIR 
 } from './lib/constants.js';
 import { analyzeDependencies, copyDependenciesExcludingSharp } from './lib/dependencies.js';
-import { checkAndInstallLinuxSharp } from './lib/native-packages.js';
 import { createSimpleServerPackageJson, createMetaConfig } from './lib/config.js';
 import { optimizeNodeModules } from './lib/optimizer.js';
 import { createServerEntryFile } from './lib/server-entry.js';
@@ -36,9 +35,9 @@ function getAdapter(): AstroAdapter {
       hybridOutput: 'stable',
       staticOutput: 'stable',
       serverOutput: 'stable',
-      sharpImageService: 'stable',
       i18nDomains: 'experimental',
       envGetSecret: 'stable',
+      sharpImageService: 'unsupported',
     },
   };
 }
@@ -147,7 +146,6 @@ export default function edgeoneAdapter(
           
           // 处理依赖
           const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
-          await checkAndInstallLinuxSharp(serverDir, packageNames, logger);
           createSimpleServerPackageJson(serverDir);
           await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
           
@@ -155,8 +153,8 @@ export default function edgeoneAdapter(
           createServerEntryFile(serverDir);
         }
 
-        // 生成路由配置文件
-        createMetaConfig(routes, edgeoneDir);
+        // 生成路由配置文件到 server-handler 目录
+        createMetaConfig(routes, edgeoneDir, serverDir);
         
         // 清理 Astro 构建的临时文件（仅在 SSR 模式下）
         if (_buildOutput === 'server') {

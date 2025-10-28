@@ -30,4 +30,5 @@ pnpm-debug.log*
 !.edgeone/project.json
 .tef_dist/*
 .vscode/*
-  
+.netlify/*
+.vercel/*
