@@ -74,9 +74,5 @@ function cleanDirectory(dir: string, logger: Logger): void {
   }
   
   traverse(dir);
-  
-  if (removedCount > 0) {
-    logger.info(`Optimized node_modules: removed ${removedCount} unnecessary files`);
-  }
 }
 

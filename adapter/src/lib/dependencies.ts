@@ -9,14 +9,14 @@ import type { Logger } from './types.js';
 
 /**
  * 使用 @vercel/nft 分析依赖并返回包名集合和文件列表
+ * @param cache - NFT 缓存对象，用于优化重复分析（可选）
  */
 export async function analyzeDependencies(
   rootDir: string,
   serverDir: string,
-  logger: Logger
+  logger: Logger,
+  cache?: any
 ): Promise<{ packageNames: Set<string>; fileList: Set<string> }> {
-  logger.info('Analyzing dependencies with @vercel/nft...');
-  
   const entryFile = join(serverDir, 'entry.mjs');
   const renderersFile = join(serverDir, 'renderers.mjs');
   
@@ -30,15 +30,58 @@ export async function analyzeDependencies(
     const filesToAnalyze = [entryFile];
     if (existsSync(renderersFile)) {
       filesToAnalyze.push(renderersFile);
-      logger.info('Including renderers.mjs in dependency analysis');
     }
     
-    const { fileList } = await nodeFileTrace(filesToAnalyze, {
+    // 添加 pages/ 目录下的所有 .mjs 入口文件
+    const pagesDir = join(serverDir, 'pages');
+    if (existsSync(pagesDir)) {
+      const addPageFiles = (dir: string) => {
+        const entries = readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            addPageFiles(fullPath);
+          } else if (entry.isFile() && entry.name.endsWith('.mjs')) {
+            filesToAnalyze.push(fullPath);
+          }
+        }
+      };
+      addPageFiles(pagesDir);
+    }
+    
+    const { fileList, warnings } = await nodeFileTrace(filesToAnalyze, {
       base: rootDir,
       processCwd: rootDir,
       ts: true,
       mixedModules: true,
+      ...(cache && { cache }), // 如果提供了缓存对象则使用
     });
+    
+    // 处理 warnings
+    for (const warning of warnings) {
+      if (warning.message.startsWith("Failed to resolve dependency")) {
+        const match = /Cannot find module '(.+?)' loaded from (.+)/.exec(warning.message);
+        if (match) {
+          const [, module, file] = match;
+          // 忽略 Astro 内部模块、sharp 和相关 native 包的解析错误
+          if (
+            module === "@astrojs/" || 
+            module === "sharp" ||
+            module.startsWith("@img/")
+          ) {
+            continue;
+          }
+          // 其他模块解析失败记录为警告
+          logger.warn(`Module "${module}" couldn't be resolved from "${file}"`);
+        }
+      } else if (warning.message.startsWith("Failed to parse")) {
+        // 跳过解析错误
+        continue;
+      } else {
+        // 其他警告记录为警告
+        logger.warn(`NFT warning: ${warning.message}`);
+      }
+    }
     
     const packageNames = new Set<string>();
     
@@ -57,8 +100,6 @@ export async function analyzeDependencies(
         }
       }
     }
-    
-    logger.info(`Extracted ${packageNames.size} package dependencies`);
     
     return { packageNames, fileList: new Set(fileList) };
   } catch (error) {
@@ -79,12 +120,6 @@ export async function copyNonNativeDependencies(
   logger: Logger
 ): Promise<void> {
   const shouldSkipNative = skipNativePackages.size > 0;
-  
-  if (shouldSkipNative) {
-    logger.info('Copying non-native dependencies...');
-  } else {
-    logger.info('Copying all dependencies (including native packages)...');
-  }
   
   const copiedFiles = new Set<string>();
   let fileCount = 0;
@@ -131,8 +166,6 @@ export async function copyNonNativeDependencies(
     }
   }
   
-  logger.info(`Copied ${fileCount} dependency files`);
-  
   // 如果拷贝了 native 包，修复绑定
   if (!shouldSkipNative) {
     fixSharpBindings(serverDir, logger);
@@ -174,11 +207,9 @@ function fixSharpBindings(serverDir: string, logger: Logger): void {
           try {
             // 尝试创建硬链接（更高效）
             linkSync(sourcePath, targetPath);
-            logger.info(`Created hard link for ${sharpDir}/sharp.node`);
           } catch {
             // 如果硬链接失败，则复制文件
             cpSync(sourcePath, targetPath);
-            logger.info(`Copied ${sharpDir}/sharp.node`);
           }
         }
       }
@@ -225,8 +256,6 @@ export async function copyDependenciesExcludingSharp(
   fileList: Set<string>,
   logger: Logger
 ): Promise<void> {
-  logger.info('Copying dependencies (excluding Sharp)...');
-  
   const copiedFiles = new Set<string>();
   let fileCount = 0;
   let skippedSharpCount = 0;
@@ -264,8 +293,5 @@ export async function copyDependenciesExcludingSharp(
       }
     }
   }
-  
-  logger.info(`Copied ${fileCount} dependency files (excluding Sharp)`);
-  logger.info(`Skipped ${skippedSharpCount} Sharp-related files`);
 }
 

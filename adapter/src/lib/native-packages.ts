@@ -23,11 +23,8 @@ export async function checkAndInstallLinuxSharp(
 ): Promise<void> {
   // 1. 检查是否依赖 Sharp 包
   if (!packageNames.has('sharp')) {
-    logger.info('Sharp not detected in dependencies, skipping Linux Sharp installation');
     return;
   }
-  
-  logger.info('Sharp detected in dependencies, checking Linux version...');
   
   const nodeModulesDir = join(serverDir, 'node_modules');
   mkdirSync(nodeModulesDir, { recursive: true });
@@ -37,11 +34,8 @@ export async function checkAndInstallLinuxSharp(
   
   // 2. 检查是否已有 Linux 版本的 Sharp
   if (existsSync(linuxSharpPath)) {
-    logger.info('✓ Linux Sharp already exists');
     return;
   }
-  
-  logger.info('Linux Sharp not found, installing...');
   
   try {
     // 3. 删除现有的 Sharp 包（如果有）
@@ -55,7 +49,6 @@ export async function checkAndInstallLinuxSharp(
     }
     
     // 4. 安装 Linux 版本的 Sharp
-    logger.info('Installing Linux Sharp with platform-specific flags...');
     execSync(
       'npm install sharp@0.34.3 --cpu=x64 --os=linux --libc=glibc --omit=dev --no-save --loglevel=error',
       {
@@ -70,13 +63,6 @@ export async function checkAndInstallLinuxSharp(
         }
       }
     );
-    
-    // 5. 验证安装结果
-    if (existsSync(linuxSharpPath)) {
-      logger.info('✓ Linux Sharp installed successfully');
-    } else {
-      logger.warn('⚠️  Linux Sharp installation completed but bindings not found');
-    }
   } catch (error) {
     logger.error(`Failed to install Linux Sharp: ${error}`);
     throw error;

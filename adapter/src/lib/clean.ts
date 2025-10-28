@@ -21,8 +21,6 @@ export function cleanOutputDirectory(
     return;
   }
 
-  logger.info('Cleaning output directory...');
-
   // 保存需要保留的文件内容
   const preservedContents = new Map<string, string>();
   
@@ -32,7 +30,6 @@ export function cleanOutputDirectory(
       try {
         const content = readFileSync(filePath, 'utf-8');
         preservedContents.set(file, content);
-        logger.info(`Preserving ${file}`);
       } catch (e) {
         logger.warn(`Failed to read ${file}: ${e}`);
       }
@@ -59,7 +56,6 @@ export function cleanOutputDirectory(
     const filePath = join(outputDir, file);
     try {
       writeFileSync(filePath, content);
-      logger.info(`Restored ${file}`);
     } catch (e) {
       logger.warn(`Failed to restore ${file}: ${e}`);
     }

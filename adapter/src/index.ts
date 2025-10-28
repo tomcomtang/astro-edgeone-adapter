@@ -53,6 +53,9 @@ export default function edgeoneAdapter(
   // 保存配置信息
   let _config: AstroConfig;
   let _buildOutput: 'static' | 'server';
+  
+  // NFT 缓存对象（在适配器级别创建，每次构建都使用新的空对象）
+  let _nftCache: any = {};
 
   return {
     name: PACKAGE_NAME,
@@ -78,6 +81,9 @@ export default function edgeoneAdapter(
       },
 
       'astro:build:start': ({ logger }) => {
+        // 每次构建开始时重置 NFT 缓存
+        _nftCache = {};
+        
         // 在构建开始时清理输出目录，但保留 project.json
         const edgeoneDir = fileURLToPath(new URL(`./${outDir}/`, _config.root));
         cleanOutputDirectory(edgeoneDir, ['project.json'], logger);
@@ -116,44 +122,20 @@ export default function edgeoneAdapter(
           
           const rootDir = fileURLToPath(_config.root);
           
-          // 按照要求的4个步骤处理依赖
-          logger.info('Starting dependency processing with 4 steps...');
-          
-          // 步骤1：@vercel/nft 分析构建结果的包依赖
-          logger.info('Step 1: Analyzing dependencies with @vercel/nft...');
-          const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger);
-          logger.info(`Found ${packageNames.size} package dependencies`);
-          
-          // 步骤2：检测是否依赖 Sharp 包，如果是则安装 Linux 版本
-          logger.info('Step 2: Checking and installing Linux Sharp if needed...');
+          // 处理依赖
+          const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
           await checkAndInstallLinuxSharp(serverDir, packageNames, logger);
-          
-          // 步骤3：确保 Linux Sharp 安装后，只写入 type: module
-          logger.info('Step 3: Creating simplified package.json (type: module only)...');
           createSimpleServerPackageJson(serverDir);
-          
-          // 步骤4：拷贝除 Sharp 外的其他依赖包
-          logger.info('Step 4: Copying dependencies (excluding Sharp)...');
           await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger);
           
-          logger.info('✅ All 4 dependency processing steps completed!');
-          
-          logger.info('Optimizing node_modules size...');
           optimizeNodeModules(serverDir, logger);
-          
-          logger.info('Creating server entry index.mjs...');
           createServerEntryFile(serverDir);
         }
 
         // 生成路由配置文件
-        logger.info('Generating meta.json...');
         createMetaConfig(routes, edgeoneDir);
 
-        logger.info(`Copying static files to ${outDir}/${ASSETS_DIR}/`);
-        if (_buildOutput === 'server') {
-          logger.info(`Copying server files to ${outDir}/${SERVER_HANDLER_DIR}/`);
-        }
-        logger.info(`Build complete! Ready to deploy to EdgeOne Pages.`);
+        logger.info(`✅ Build complete! Ready to deploy to EdgeOne Pages.`);
       },
     },
   };
