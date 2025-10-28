@@ -31,11 +31,6 @@ export function createSimpleServerPackageJson(serverDir: string): void {
  * 转换 Astro 路由为正则表达式（参考 Vercel）
  */
 function convertRouteToRegex(route: string): string {
-  // 特殊端点使用正则
-  if (route === '/_image') {
-    return '^/_image/?$';
-  }
-  
   // 动态路由转换
   if (route.includes('[')) {
     // /blog/[...slug] → ^/blog(?:/(.*?))?/?$
