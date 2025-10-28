@@ -8,6 +8,7 @@ import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
 import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { globSync } from 'tinyglobby';
 import { 
   PACKAGE_NAME, 
   ASSETS_DIR, 
@@ -122,11 +123,33 @@ export default function edgeoneAdapter(
           
           const rootDir = fileURLToPath(_config.root);
           
+          // 合并 vite.assetsInclude 的文件
+          const extraIncludeFiles = [...includeFiles];
+          if (_config.vite?.assetsInclude) {
+            const processAssetsInclude = (pattern: string | RegExp | (string | RegExp)[]) => {
+              if (typeof pattern === 'string') {
+                try {
+                  const matched = globSync(pattern, { cwd: rootDir, absolute: false });
+                  matched.forEach(file => extraIncludeFiles.push(file));
+                } catch (e) {
+                  logger.warn(`Failed to match vite.assetsInclude pattern "${pattern}": ${e}`);
+                }
+              } else if (pattern instanceof RegExp) {
+                // RegExp 暂不支持，跳过
+              } else if (Array.isArray(pattern)) {
+                for (const p of pattern) {
+                  processAssetsInclude(p);
+                }
+              }
+            };
+            processAssetsInclude(_config.vite.assetsInclude);
+          }
+          
           // 处理依赖
           const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
           await checkAndInstallLinuxSharp(serverDir, packageNames, logger);
           createSimpleServerPackageJson(serverDir);
-          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger, includeFiles, excludeFiles);
+          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
           
           optimizeNodeModules(serverDir, logger);
           createServerEntryFile(serverDir);
