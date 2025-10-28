@@ -5,6 +5,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, linkSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { nodeFileTrace } from '@vercel/nft';
+import { globSync } from 'tinyglobby';
 import type { Logger } from './types.js';
 
 /**
@@ -254,7 +255,9 @@ export async function copyDependenciesExcludingSharp(
   rootDir: string,
   serverDir: string,
   fileList: Set<string>,
-  logger: Logger
+  logger: Logger,
+  includeFiles: string[] = [],
+  excludeFiles: string[] = []
 ): Promise<void> {
   const copiedFiles = new Set<string>();
   let fileCount = 0;
@@ -282,6 +285,17 @@ export async function copyDependenciesExcludingSharp(
       continue;
     }
     
+    // 应用 excludeFiles 模式
+    if (excludeFiles.length > 0) {
+      const shouldExclude = excludeFiles.some(pattern => {
+        const regex = new RegExp(pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'));
+        return regex.test(file);
+      });
+      if (shouldExclude) {
+        continue;
+      }
+    }
+    
     if (existsSync(sourcePath) && !copiedFiles.has(file)) {
       try {
         mkdirSync(dirname(targetPath), { recursive: true });
@@ -290,6 +304,40 @@ export async function copyDependenciesExcludingSharp(
         fileCount++;
       } catch (e) {
         // 忽略单个文件拷贝失败
+      }
+    }
+  }
+  
+  // 处理 includeFiles - 强制包含指定的文件（从项目根目录）
+  if (includeFiles.length > 0) {
+    const additionalFiles = new Set<string>();
+    
+    // 使用 glob 查找匹配的文件
+    for (const pattern of includeFiles) {
+      try {
+        const matched = globSync(pattern, { cwd: rootDir, absolute: false });
+        matched.forEach(file => additionalFiles.add(file));
+      } catch (e) {
+        logger.warn(`Failed to match pattern "${pattern}": ${e}`);
+      }
+    }
+    
+    // 复制额外的文件
+    for (const file of additionalFiles) {
+      if (!copiedFiles.has(file)) {
+        const sourcePath = join(rootDir, file);
+        const targetPath = join(serverDir, file);
+        
+        if (existsSync(sourcePath)) {
+          try {
+            mkdirSync(dirname(targetPath), { recursive: true });
+            cpSync(sourcePath, targetPath, { force: true });
+            copiedFiles.add(file);
+            fileCount++;
+          } catch (e) {
+            logger.warn(`Failed to copy ${file}: ${e}`);
+          }
+        }
       }
     }
   }

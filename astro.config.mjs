@@ -18,7 +18,3 @@ export default defineConfig({
     }),
     integrations: [mdx(), sitemap(), react(), vue(), svelte()],
 });
-
-// 如果需要记录 hooks 参数，可以使用：
-// import hooksLogger from './adapter/hooks-logger.ts';
-// integrations: [hooksLogger(), mdx(), sitemap()]

@@ -6,7 +6,7 @@
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
-import { cpSync, mkdirSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { 
   PACKAGE_NAME, 
@@ -48,7 +48,7 @@ function getAdapter(): AstroAdapter {
 export default function edgeoneAdapter(
   options: EdgeOneAdapterOptions = {}
 ): AstroIntegration {
-  const { outDir = '.edgeone' } = options;
+  const { outDir = '.edgeone', includeFiles = [], excludeFiles = [] } = options;
   
   // 保存配置信息
   let _config: AstroConfig;
@@ -126,7 +126,7 @@ export default function edgeoneAdapter(
           const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
           await checkAndInstallLinuxSharp(serverDir, packageNames, logger);
           createSimpleServerPackageJson(serverDir);
-          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger);
+          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger, includeFiles, excludeFiles);
           
           optimizeNodeModules(serverDir, logger);
           createServerEntryFile(serverDir);
@@ -134,6 +134,15 @@ export default function edgeoneAdapter(
 
         // 生成路由配置文件
         createMetaConfig(routes, edgeoneDir);
+        
+        // 清理 Astro 构建的临时文件（仅在 SSR 模式下）
+        if (_buildOutput === 'server') {
+          try {
+            rmSync(fileURLToPath(_config.build.server), { recursive: true, force: true });
+          } catch (error) {
+            logger.warn(`Failed to clean up build temp files: ${error}`);
+          }
+        }
 
         logger.info(`✅ Build complete! Ready to deploy to EdgeOne Pages.`);
       },
