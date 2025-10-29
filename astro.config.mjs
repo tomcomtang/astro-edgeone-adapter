@@ -12,7 +12,7 @@ import svelte from '@astrojs/svelte';
 // https://astro.build/config
 export default defineConfig({
     site: 'https://astro-edgeone-adapter.edgeone.run/', // 必需：用于生成 canonical URLs
-    output: 'static', // SSR 模式
+    output: 'server', // SSR 模式
     adapter: edgeone({
         outDir: '.edgeone'
     }),
