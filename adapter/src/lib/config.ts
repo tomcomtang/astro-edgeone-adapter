@@ -66,9 +66,13 @@ export function createMetaConfig(
     },
     has404: false,
     nextRoutes: routes.map(route => {
+      // 使用 route.pattern（如果存在）作为正则表达式，否则转换 route.route
+      // route.pattern 是 Astro 自动生成的 RegExp，使用 source 获取字符串
+      const pattern = route.pattern?.source || convertRouteToRegex(route.route);
+      
       const routeConfig: RouteConfig = {
         // 使用正则表达式
-        path: convertRouteToRegex(route.route),
+        path: pattern,
       };
       
       // 如果是静态路由（预渲染），添加isStatic标识
