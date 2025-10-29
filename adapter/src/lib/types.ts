@@ -27,6 +27,11 @@ export interface EdgeOneAdapterOptions {
 export interface MetaConfig {
   conf: {
     headers: any[];
+    redirects?: Array<{
+      source: string;
+      destination: string;
+      statusCode: number;
+    }>;
     has404: boolean;
   };
   has404: boolean;

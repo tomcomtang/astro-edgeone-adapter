@@ -3,7 +3,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import type { MetaConfig, RouteConfig } from './types.js';
 
 /**
@@ -24,12 +24,100 @@ export function createSimpleServerPackageJson(serverDir: string): void {
 }
 
 /**
+ * 转换路由段为路径模式（用于 redirects 的 source 和 destination）
+ * 参考 Vercel 适配器的 getMatchPattern 函数
+ */
+const ROUTE_DYNAMIC_SPLIT = /\[(.+?\(.+?\)|.+?)\]/;
+const ROUTE_SPREAD = /^\.{3}.+$/;
+
+function getParts(part: string, file: string) {
+  const result: Array<{ content: string; dynamic: boolean; spread: boolean }> = [];
+  part.split(ROUTE_DYNAMIC_SPLIT).forEach((str, i) => {
+    if (!str) return;
+    const dynamic = i % 2 === 1;
+    const match = dynamic ? /([^(]+)$/.exec(str) : null;
+    const content = dynamic ? (match ? match[1] : null) : str;
+    if (!content || (dynamic && !/^(?:\.\.\.)?[\w$]+$/.test(content))) {
+      throw new Error(`Invalid route ${file} — parameter name must match /^[a-zA-Z0-9_$]+$/`);
+    }
+    result.push({
+      content,
+      dynamic,
+      spread: dynamic && ROUTE_SPREAD.test(content)
+    });
+  });
+  return result;
+}
+
+function getMatchPattern(segments: any[][]): string {
+  return segments
+    .map((segment) => {
+      return segment
+        .map((part: any) => {
+          if (part.spread) {
+            const paramName = part.content.startsWith('...') ? part.content.slice(3) : part.content;
+            return `:${paramName}*`;
+          }
+          if (part.dynamic) {
+            return `:${part.content}`;
+          }
+          return part.content;
+        })
+        .join('');
+    })
+    .join('/');
+}
+
+/**
+ * 获取重定向目标路径
+ */
+function getRedirectLocation(route: any, base: string): string {
+  if (route.redirectRoute) {
+    const pattern = getMatchPattern(route.redirectRoute.segments);
+    return posix.join(base, pattern).replace(/\/\//g, '/');
+  }
+  const destination = typeof route.redirect === 'object' ? route.redirect.destination : route.redirect ?? '';
+  // 检查是否是远程路径（以 http:// 或 https:// 开头）
+  if (destination.startsWith('http://') || destination.startsWith('https://')) {
+    return destination;
+  }
+  return posix.join(base, destination).replace(/\/\//g, '/');
+}
+
+/**
+ * 获取重定向状态码
+ */
+function getRedirectStatus(route: any): number {
+  if (typeof route.redirect === 'object') {
+    return route.redirect.status;
+  }
+  return 301;
+}
+
+/**
+ * 从路由段生成源路径模式（用于 redirects）
+ */
+function getRedirectSource(route: any, base: string): string {
+  if (route.segments) {
+    const pattern = getMatchPattern(route.segments);
+    return posix.join(base, pattern).replace(/\/\//g, '/');
+  }
+  // 如果没有 segments，使用 route.route 作为 fallback
+  return posix.join(base, route.route || '').replace(/\/\//g, '/');
+}
+
+/**
  * 生成 meta.json 配置文件
  */
 /**
  * 转换 Astro 路由为正则表达式（参考 Vercel）
+ * @param route - 路由路径
+ * @param trailingSlash - trailingSlash 配置：true=总是需要, false=不要, undefined=可选
  */
 function convertRouteToRegex(route: string): string {
+  // Fallback 函数：只有当 route.pattern 不存在时才会用到
+  // 默认使用可选尾部斜杠（/?$）
+  
   // 动态路由转换
   if (route.includes('[')) {
     // /blog/[...slug] → ^/blog(?:/(.*?))?/?$
@@ -47,28 +135,52 @@ function convertRouteToRegex(route: string): string {
     return '^/$';
   }
   
+  // 默认使用可选尾部斜杠
   return `^${route}/?$`;
 }
 
 export function createMetaConfig(
   routes: any[],
   edgeoneDir: string,
-  serverHandlerDir: string
+  serverHandlerDir: string,
+  config?: { base?: string }
 ): void {
+  // 提取 redirect 路由
+  const redirectRoutes = routes.filter((route) => route.type === 'redirect');
+  
+  // 处理 redirects
+  const redirects = redirectRoutes.map((route) => {
+    const base = config?.base || '/';
+    return {
+      source: getRedirectSource(route, base),
+      destination: getRedirectLocation(route, base),
+      statusCode: getRedirectStatus(route)
+    };
+  });
+
+  // 过滤掉 redirect 路由，只保留普通路由
+  const normalRoutes = routes.filter((route) => route.type !== 'redirect');
+
   const metaData: MetaConfig = {
     conf: {
       headers: [],
+      redirects,
       has404: false,
     },
     has404: false,
-    nextRoutes: routes.map(route => {
-      // 使用 route.pattern（如果存在）作为正则表达式，否则转换 route.route
-      // route.pattern 是 Astro 自动生成的 RegExp，使用 source 获取字符串
-      let pattern = route.pattern?.source || convertRouteToRegex(route.route);
+    nextRoutes: normalRoutes.map(route => {
+      // 完全对齐 Vercel 适配器：直接使用 route.patternRegex.source，不做任何修改
+      // Vercel 适配器代码：src: route.patternRegex.source
+      let pattern: string;
       
-      // 移除 JSON.stringify 自动添加的反斜杠转义
-      // 这样生成的是 ^/_image/?$ 而不是 ^\/_image\/?$
-      pattern = pattern.replace(/\\\//g, '/');
+      if (route.pattern) {
+        // 直接使用 Astro 生成的 pattern，只移除转义以便 JSON 序列化
+        pattern = route.pattern.source.replace(/\\\//g, '/');
+      } else {
+        // 如果没有 route.pattern，使用 fallback 转换（但通常 Astro 都会提供 pattern）
+        pattern = convertRouteToRegex(route.route);
+        pattern = pattern.replace(/\\\//g, '/');
+      }
       
       const routeConfig: RouteConfig = {
         // 使用正则表达式
