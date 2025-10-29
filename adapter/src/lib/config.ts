@@ -8,7 +8,6 @@ import type { MetaConfig, RouteConfig } from './types.js';
 
 /**
  * 创建简化的 server-handler package.json（只包含 type: module）
- * 步骤3：确保 Linux Sharp 安装后，只写入 type: module
  */
 export function createSimpleServerPackageJson(serverDir: string): void {
   const serverPackageJson = {
@@ -59,9 +58,6 @@ export function createMetaConfig(
   const metaData: MetaConfig = {
     conf: {
       headers: [],
-      redirects: [],
-      rewrites: [],
-      caches: [],
       has404: false,
     },
     has404: false,

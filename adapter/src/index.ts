@@ -6,7 +6,7 @@
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { globSync } from 'tinyglobby';
 import { 
@@ -14,7 +14,7 @@ import {
   ASSETS_DIR, 
   SERVER_HANDLER_DIR 
 } from './lib/constants.js';
-import { analyzeDependencies, copyDependenciesExcludingSharp } from './lib/dependencies.js';
+import { analyzeDependencies, copyDependencies } from './lib/dependencies.js';
 import { createSimpleServerPackageJson, createMetaConfig } from './lib/config.js';
 import { optimizeNodeModules } from './lib/optimizer.js';
 import { createServerEntryFile } from './lib/server-entry.js';
@@ -37,7 +37,7 @@ function getAdapter(): AstroAdapter {
       serverOutput: 'stable',
       i18nDomains: 'experimental',
       envGetSecret: 'stable',
-      sharpImageService: 'unsupported',
+      sharpImageService: 'stable',
     },
   };
 }
@@ -74,7 +74,7 @@ export default function edgeoneAdapter(
         });
       },
 
-      'astro:config:done': ({ setAdapter, config, buildOutput }) => {
+      'astro:config:done': ({ setAdapter, config, buildOutput, logger }) => {
         _config = config;
         _buildOutput = buildOutput;
         setAdapter(getAdapter());
@@ -149,7 +149,7 @@ export default function edgeoneAdapter(
           // 处理依赖
           const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
           createSimpleServerPackageJson(serverDir);
-          await copyDependenciesExcludingSharp(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
+          await copyDependencies(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
           
           optimizeNodeModules(serverDir, logger);
           createServerEntryFile(serverDir);

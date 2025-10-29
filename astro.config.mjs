@@ -13,7 +13,7 @@ import vercelAdapter from '@astrojs/vercel';
 // https://astro.build/config
 export default defineConfig({
     site: 'https://astro-edgeone-adapter.edgeone.run/', // 必需：用于生成 canonical URLs
-    output: 'static', // 静态模式
+    output: 'server', // server 模式
     adapter: edgeoneAdapter(),
     integrations: [mdx(), sitemap(), react(), vue(), svelte()]
 });

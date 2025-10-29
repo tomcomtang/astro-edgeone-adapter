@@ -106,7 +106,7 @@ const error = ref<string | null>(null)
 // 图片映射 - 直接使用原图路径
 const getImageUrl = (imageName: string): string => {
   // 直接使用原图路径，不使用 Astro 图片处理
-  return `/assets/${imageName}`;
+  return `/${imageName}`;
 };
 
 // 加载相册数据
