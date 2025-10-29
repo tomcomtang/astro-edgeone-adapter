@@ -6,7 +6,7 @@
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
-import { cpSync, mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { globSync } from 'tinyglobby';
 import { 
@@ -103,8 +103,10 @@ export default function edgeoneAdapter(
         }
 
         // 复制静态文件
+        // static 模式下从 dist/client 复制
+        // server 模式下从 dist/client 复制
         const sourceStaticDir = _buildOutput === 'static' 
-          ? _config.outDir 
+          ? new URL('client/', _config.outDir)  // dist/client
           : _config.build.client;
         
         cpSync(fileURLToPath(sourceStaticDir), staticDir, {
@@ -153,8 +155,11 @@ export default function edgeoneAdapter(
           createServerEntryFile(serverDir);
         }
 
-        // 生成路由配置文件到 server-handler 目录
-        createMetaConfig(routes, edgeoneDir, serverDir);
+        // 生成路由配置文件（仅在 SSR 模式下）
+        if (_buildOutput === 'server') {
+          createMetaConfig(routes, edgeoneDir, serverDir);
+        }
+        // static 模式下不需要 meta.json
         
         // 清理 Astro 构建的临时文件（仅在 SSR 模式下）
         if (_buildOutput === 'server') {

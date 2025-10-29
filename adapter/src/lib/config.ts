@@ -2,7 +2,7 @@
  * 配置文件生成模块
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { MetaConfig, RouteConfig } from './types.js';
 
@@ -89,9 +89,12 @@ export function createMetaConfig(
     }),
   };
 
-  // 生成到 server-handler 目录
-  const serverMetaPath = join(serverHandlerDir, 'meta.json');
-  writeFileSync(serverMetaPath, JSON.stringify(metaData, null, 2));
+  // 生成到 server-handler 目录（仅当目录存在时）
+  // 注意：serverHandlerDir 可能与 edgeoneDir 相同（static 模式）
+  if (serverHandlerDir !== edgeoneDir && existsSync(serverHandlerDir)) {
+    const serverMetaPath = join(serverHandlerDir, 'meta.json');
+    writeFileSync(serverMetaPath, JSON.stringify(metaData, null, 2));
+  }
   
   // 同时也生成到 .edgeone 目录
   const edgeoneMetaPath = join(edgeoneDir, 'meta.json');
