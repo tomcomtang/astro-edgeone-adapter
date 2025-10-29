@@ -68,7 +68,7 @@ export default function edgeoneAdapter(
           },
           vite: {
             ssr: {
-              external: ['node:async_hooks'],
+              external: ['@vercel/nft', 'node:async_hooks'],
             },
           },
         });
@@ -156,8 +156,11 @@ export default function edgeoneAdapter(
         }
 
         // 生成路由配置文件（仅在 SSR 模式下）
+        // 完全对齐 Vercel 适配器：直接使用 route.patternRegex.source，不传递 trailingSlash
         if (_buildOutput === 'server') {
-          createMetaConfig(routes, edgeoneDir, serverDir);
+          createMetaConfig(routes, edgeoneDir, serverDir, {
+            base: _config.base || '/'
+          });
         }
         // static 模式下不需要 meta.json
         
