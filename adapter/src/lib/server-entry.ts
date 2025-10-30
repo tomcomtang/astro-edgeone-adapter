@@ -9,22 +9,26 @@ import { DEFAULT_PORT } from './constants.js';
 /**
  * 创建服务器入口文件 index.mjs
  */
-export function createServerEntryFile(serverDir: string, port: number = DEFAULT_PORT): void {
-  const indexContent = generateServerEntryContent(port);
+export function createServerEntryFile(
+  serverDir: string,
+  serverEntryFile: string,
+  port: number = DEFAULT_PORT
+): void {
+  const indexContent = generateServerEntryContent(serverEntryFile, port);
   writeFileSync(join(serverDir, 'index.mjs'), indexContent);
 }
 
 /**
  * 生成服务器入口文件内容
  */
-function generateServerEntryContent(port: number): string {
+function generateServerEntryContent(serverEntryFile: string, port: number): string {
   return `import { createServer } from 'http';
 import { webcrypto } from 'crypto';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Polyfill for Web Crypto API in Node.js - must be set before importing entry.mjs
+// Polyfill for Web Crypto API in Node.js - must be set before importing server entry
 if (!globalThis.crypto) {
   globalThis.crypto = webcrypto;
 }
@@ -170,7 +174,7 @@ async function handleResponse(res, response) {
 }
 
 // Dynamically import handler after crypto is set up
-const handlerPromise = import('./entry.mjs');
+const handlerPromise = import('./${serverEntryFile}');
 
 const server = createServer(async (req, res) => {
   try {

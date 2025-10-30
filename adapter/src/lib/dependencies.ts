@@ -15,14 +15,15 @@ import type { Logger } from './types.js';
 export async function analyzeDependencies(
   rootDir: string,
   serverDir: string,
+  serverEntryFile: string,
   logger: Logger,
   cache?: any
 ): Promise<{ packageNames: Set<string>; fileList: Set<string> }> {
-  const entryFile = join(serverDir, 'entry.mjs');
+  const entryFile = join(serverDir, serverEntryFile);
   const renderersFile = join(serverDir, 'renderers.mjs');
   
   if (!existsSync(entryFile)) {
-    logger.warn('entry.mjs not found, skipping dependency analysis');
+    logger.warn(`${serverEntryFile} not found, skipping dependency analysis`);
     return { packageNames: new Set(), fileList: new Set() };
   }
   

@@ -123,6 +123,7 @@ export default function edgeoneAdapter(
           });
           
           const rootDir = fileURLToPath(_config.root);
+          const serverEntryFile = String(_config.build.serverEntry || 'entry.mjs');
           
           // 合并 vite.assetsInclude 的文件
           const extraIncludeFiles = [...includeFiles];
@@ -147,12 +148,12 @@ export default function edgeoneAdapter(
           }
           
           // 处理依赖
-          const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, logger, _nftCache);
+          const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, serverEntryFile, logger, _nftCache);
           createSimpleServerPackageJson(serverDir);
           await copyDependencies(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
           
           optimizeNodeModules(serverDir, logger);
-          createServerEntryFile(serverDir);
+          createServerEntryFile(serverDir, serverEntryFile);
         }
 
         // 生成路由配置文件（仅在 SSR 模式下）
