@@ -115,7 +115,7 @@ const loadAlbums = async () => {
     loading.value = true
     error.value = null
     
-    const response = await fetch('/api/albums')
+    const response = await fetch('/api/albums/')
     const apiResponse = await response.json()
     
     if (apiResponse.success) {

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getAllAlbums, getAlbumById, createAlbum, updateAlbum, deleteAlbum, getAlbumCategories } from './albums/data';
+import { getAllAlbums, getAlbumById, createAlbum, updateAlbum, deleteAlbum, getAlbumCategories } from './data';
 
 export const GET: APIRoute = async ({ request, url }) => {
   const pathname = url.pathname;
@@ -16,7 +16,8 @@ export const GET: APIRoute = async ({ request, url }) => {
     });
   }
   
-  if (pathname.startsWith('/api/albums/') && pathname !== '/api/albums/categories') {
+  // 判断是否是获取单个相册的请求（路径必须包含 ID，不能只是 /api/albums/）
+  if (pathname.startsWith('/api/albums/') && pathname !== '/api/albums/categories' && pathname.length > '/api/albums/'.length) {
     const result = await getAlbumById(request);
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 404,
