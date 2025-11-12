@@ -1,5 +1,5 @@
 /**
- * 适配器常量定义
+ * Adapter constants.
  */
 
 export const PACKAGE_NAME = '@edgeone/astro-adapter';

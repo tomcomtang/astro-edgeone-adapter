@@ -1,23 +1,26 @@
 {
-  "name": "@edgeone/astro-adapter",
-  "version": "1.0.0",
+  "name": "@tencent/edgeone-astro-adapter",
+  "version": "1.0.2",
   "description": "Astro adapter for EdgeOne Pages",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./server": {
-      "types": "./src/server.ts",
-      "default": "./src/server.ts"
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
     }
   },
   "files": [
-    "src"
+    "dist"
   ],
+  "scripts": {
+    "build": "tsc"
+  },
   "keywords": [
     "astro",
     "adapter",
@@ -31,13 +34,11 @@
   "peerDependencies": {
     "astro": "^5.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-repo/edgeone-astro-adapter"
-  },
   "license": "MIT",
   "engines": {
     "node": "22.x"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }
-

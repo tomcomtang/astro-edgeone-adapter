@@ -1,5 +1,5 @@
 /**
- * 清理输出目录模块
+ * Output directory cleaning utilities.
  */
 
 import { existsSync, readdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
@@ -7,10 +7,10 @@ import { join } from 'node:path';
 import type { Logger } from './types.js';
 
 /**
- * 清理输出目录，但保留指定文件
- * @param outputDir 输出目录路径
- * @param preserveFiles 要保留的文件列表
- * @param logger 日志对象
+ * Clean the output directory while preserving specific files.
+ * @param outputDir Path to the output directory
+ * @param preserveFiles List of files to preserve
+ * @param logger Logger instance
  */
 export function cleanOutputDirectory(
   outputDir: string,
@@ -21,7 +21,7 @@ export function cleanOutputDirectory(
     return;
   }
 
-  // 保存需要保留的文件内容
+  // Save contents of files that should be preserved
   const preservedContents = new Map<string, string>();
   
   for (const file of preserveFiles) {
@@ -36,7 +36,7 @@ export function cleanOutputDirectory(
     }
   }
 
-  // 删除目录下的所有内容
+  // Remove all entries inside the directory
   try {
     const entries = readdirSync(outputDir);
     for (const entry of entries) {
@@ -51,7 +51,7 @@ export function cleanOutputDirectory(
     logger.warn(`Failed to clean directory: ${e}`);
   }
 
-  // 恢复保留的文件
+  // Restore preserved files
   for (const [file, content] of preservedContents) {
     const filePath = join(outputDir, file);
     try {

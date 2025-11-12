@@ -1,5 +1,5 @@
 /**
- * 模块导出
+ * Module exports
  */
 
 export * from './constants.js';

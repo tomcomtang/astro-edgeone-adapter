@@ -1,5 +1,5 @@
 /**
- * 文件优化模块
+ * File optimization utilities.
  */
 
 import { existsSync, readdirSync, statSync, rmSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import type { Logger } from './types.js';
 
 /**
- * 优化node_modules体积
+ * Optimize node_modules size.
  */
 export function optimizeNodeModules(serverDir: string, logger: Logger): void {
   const nodeModulesPath = join(serverDir, 'node_modules');
@@ -19,22 +19,22 @@ export function optimizeNodeModules(serverDir: string, logger: Logger): void {
 }
 
 /**
- * 递归遍历目录并删除不必要的文件
+ * Recursively traverse directories and remove unnecessary files.
  */
 function cleanDirectory(dir: string, logger: Logger): void {
   const unnecessaryPatterns = [
     /\.map$/,           // source maps
-    /\.d\.ts$/,         // TypeScript 声明文件
-    /\.md$/,            // Markdown 文档
-    /^README/i,         // README 文件
-    /^CHANGELOG/i,      // CHANGELOG 文件
-    /^LICENSE/i,        // LICENSE 文件
-    /\.test\./,         // 测试文件
-    /\.spec\./,         // spec 文件
-    /^__tests__$/,      // 测试目录
-    /^tests?$/,         // test/tests 目录
-    /^example/i,        // 示例目录
-    /^\.git/,           // git 目录
+    /\.d\.ts$/,         // TypeScript declaration files
+    /\.md$/,            // Markdown docs
+    /^README/i,         // README files
+    /^CHANGELOG/i,      // CHANGELOG files
+    /^LICENSE/i,        // LICENSE files
+    /\.test\./,         // test files
+    /\.spec\./,         // spec files
+    /^__tests__$/,      // __tests__ directory
+    /^tests?$/,         // test/tests directories
+    /^example/i,        // example directories
+    /^\.git/,          // git directories
   ];
   
   let removedCount = 0;
@@ -51,7 +51,7 @@ function cleanDirectory(dir: string, logger: Logger): void {
         try {
           const stat = statSync(fullPath);
           
-          // 检查是否是不必要的文件/目录
+          // Determine whether the entry is unnecessary
           const shouldRemove = unnecessaryPatterns.some(pattern => pattern.test(entry));
           
           if (shouldRemove) {
@@ -60,16 +60,16 @@ function cleanDirectory(dir: string, logger: Logger): void {
             continue;
           }
           
-          // 递归处理子目录
+          // Recurse into subdirectories
           if (stat.isDirectory()) {
             traverse(fullPath);
           }
         } catch (e) {
-          // 忽略单个文件的错误
+          // Ignore individual entry errors
         }
       }
     } catch (e) {
-      // 忽略目录读取错误
+      // Ignore directory read errors
     }
   }
   

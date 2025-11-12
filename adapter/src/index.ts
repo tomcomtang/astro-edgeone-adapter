@@ -1,13 +1,12 @@
 /**
  * EdgeOne Astro Adapter
  * 
- * 用于将 Astro 项目部署到 EdgeOne Pages 的适配器
+ * Adapter to deploy Astro projects to EdgeOne Pages
  */
 
 import type { AstroAdapter, AstroIntegration, AstroConfig } from 'astro';
 import { fileURLToPath } from 'node:url';
 import { cpSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { globSync } from 'tinyglobby';
 import { 
   PACKAGE_NAME, 
@@ -22,10 +21,10 @@ import { cleanOutputDirectory } from './lib/clean.js';
 import type { EdgeOneAdapterOptions } from './lib/types.js';
 
 /**
- * 获取适配器配置
+ * Get adapter configuration
  */
 function getAdapter(): AstroAdapter {
-  const serverEntrypoint = fileURLToPath(new URL('./server.ts', import.meta.url));
+  const serverEntrypoint = fileURLToPath(new URL('./server.js', import.meta.url));
   
   return {
     name: PACKAGE_NAME,
@@ -43,18 +42,18 @@ function getAdapter(): AstroAdapter {
 }
 
 /**
- * EdgeOne 适配器主函数
+ * EdgeOne adapter main function
  */
 export default function edgeoneAdapter(
   options: EdgeOneAdapterOptions = {}
 ): AstroIntegration {
   const { outDir = '.edgeone', includeFiles = [], excludeFiles = [] } = options;
   
-  // 保存配置信息
+  // Persisted config
   let _config: AstroConfig;
   let _buildOutput: 'static' | 'server';
   
-  // NFT 缓存对象（在适配器级别创建，每次构建都使用新的空对象）
+  // NFT cache object (created per adapter instance, reset each build)
   let _nftCache: any = {};
 
   return {
@@ -81,10 +80,10 @@ export default function edgeoneAdapter(
       },
 
       'astro:build:start': ({ logger }) => {
-        // 每次构建开始时重置 NFT 缓存
+        // Reset NFT cache on each build start
         _nftCache = {};
         
-        // 在构建开始时清理输出目录，但保留 project.json
+        // Clean output dir at build start but keep project.json
         const edgeoneDir = fileURLToPath(new URL(`./${outDir}/`, _config.root));
         cleanOutputDirectory(edgeoneDir, ['project.json'], logger);
       },
@@ -94,7 +93,7 @@ export default function edgeoneAdapter(
         const staticDir = fileURLToPath(new URL(`./${outDir}/${ASSETS_DIR}/`, _config.root));
         const serverDir = fileURLToPath(new URL(`./${outDir}/${SERVER_HANDLER_DIR}/`, _config.root));
 
-        // 创建输出目录
+        // Create output directories
         mkdirSync(edgeoneDir, { recursive: true });
         mkdirSync(staticDir, { recursive: true });
         
@@ -102,9 +101,9 @@ export default function edgeoneAdapter(
           mkdirSync(serverDir, { recursive: true });
         }
 
-        // 复制静态文件
-        // static 模式下从 dist/client 复制
-        // server 模式下从 dist/client 复制
+        // Copy static files
+        // In static mode: from dist/client
+        // In server mode: from dist/client
         const sourceStaticDir = _buildOutput === 'static' 
           ? new URL('client/', _config.outDir)  // dist/client
           : _config.build.client;
@@ -114,7 +113,7 @@ export default function edgeoneAdapter(
           force: true,
         });
 
-        // 处理服务端文件
+        // Handle server files
         if (_buildOutput === 'server') {
           const sourceServerDir = _config.build.server;
           cpSync(fileURLToPath(sourceServerDir), serverDir, {
@@ -125,7 +124,7 @@ export default function edgeoneAdapter(
           const rootDir = fileURLToPath(_config.root);
           const serverEntryFile = String(_config.build.serverEntry || 'entry.mjs');
           
-          // 合并 vite.assetsInclude 的文件
+          // Merge extra files from vite.assetsInclude
           const extraIncludeFiles = [...includeFiles];
           if (_config.vite?.assetsInclude) {
             const processAssetsInclude = (pattern: string | RegExp | (string | RegExp)[]) => {
@@ -137,7 +136,7 @@ export default function edgeoneAdapter(
                   logger.warn(`Failed to match vite.assetsInclude pattern "${pattern}": ${e}`);
                 }
               } else if (pattern instanceof RegExp) {
-                // RegExp 暂不支持，跳过
+                // RegExp not supported for globbing, skip
               } else if (Array.isArray(pattern)) {
                 for (const p of pattern) {
                   processAssetsInclude(p);
@@ -147,7 +146,7 @@ export default function edgeoneAdapter(
             processAssetsInclude(_config.vite.assetsInclude);
           }
           
-          // 处理依赖
+          // Analyze and copy dependencies
           const { packageNames, fileList } = await analyzeDependencies(rootDir, serverDir, serverEntryFile, logger, _nftCache);
           createSimpleServerPackageJson(serverDir);
           await copyDependencies(rootDir, serverDir, fileList, logger, extraIncludeFiles, excludeFiles);
@@ -156,16 +155,16 @@ export default function edgeoneAdapter(
           createServerEntryFile(serverDir, serverEntryFile);
         }
 
-        // 生成路由配置文件（仅在 SSR 模式下）
-        // 完全对齐 Vercel 适配器：直接使用 route.patternRegex.source，不传递 trailingSlash
+        // Generate routing config (SSR only)
+        // Fully aligned with the Vercel adapter: use route.patternRegex.source, do not pass trailingSlash
         if (_buildOutput === 'server') {
           createMetaConfig(routes, edgeoneDir, serverDir, {
             base: _config.base || '/'
           });
         }
-        // static 模式下不需要 meta.json
+        // No meta.json needed in static mode
         
-        // 清理 Astro 构建的临时文件（仅在 SSR 模式下）
+        // Clean up temporary files from Astro build (SSR only)
         if (_buildOutput === 'server') {
           try {
             rmSync(fileURLToPath(_config.build.server), { recursive: true, force: true });

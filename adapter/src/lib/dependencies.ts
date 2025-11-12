@@ -1,5 +1,5 @@
 /**
- * 依赖分析和拷贝模块
+ * Dependency analysis and copy utilities
  */
 
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -9,8 +9,8 @@ import { globSync } from 'tinyglobby';
 import type { Logger } from './types.js';
 
 /**
- * 使用 @vercel/nft 分析依赖并返回包名集合和文件列表
- * @param cache - NFT 缓存对象，用于优化重复分析（可选）
+ * Analyze dependencies via @vercel/nft and return package names and file list
+ * @param cache - Optional NFT cache object to speed up repeated analysis
  */
 export async function analyzeDependencies(
   rootDir: string,
@@ -28,13 +28,13 @@ export async function analyzeDependencies(
   }
   
   try {
-    // 使用 NFT 分析依赖
+    // Analyze dependencies with NFT
     const filesToAnalyze = [entryFile];
     if (existsSync(renderersFile)) {
       filesToAnalyze.push(renderersFile);
     }
     
-    // 添加 pages/ 目录下的所有 .mjs 入口文件
+    // Include all .mjs entry files under the pages/ directory
     const pagesDir = join(serverDir, 'pages');
     if (existsSync(pagesDir)) {
       const addPageFiles = (dir: string) => {
@@ -56,44 +56,60 @@ export async function analyzeDependencies(
       processCwd: rootDir,
       ts: true,
       mixedModules: true,
-      ...(cache && { cache }), // 如果提供了缓存对象则使用
+      ...(cache && { cache }), // Use provided cache if available
     });
     
-    // 处理 warnings
+    // Handle warnings
+    // Use a single regex to aggregate package names (sharp and its optional family)
+    const aggregateRegex = /^(?:@img\/sharp.*|sharp(?:-|$).*)$/;
+    const aggregatedModules = new Set<string>();
     for (const warning of warnings) {
       if (warning.message.startsWith("Failed to resolve dependency")) {
         const match = /Cannot find module '(.+?)' loaded from (.+)/.exec(warning.message);
         if (match) {
           const [, module, file] = match;
-          // 忽略 Astro 内部模块的解析错误
+          // Ignore Astro internal module resolution errors
           if (module === "@astrojs/") {
             continue;
           }
-          // 其他模块解析失败记录为警告
+          // Aggregate matched modules, skip per-item printing
+          if (aggregateRegex.test(module)) {
+            aggregatedModules.add(module);
+            continue;
+          }
+          // Log other unresolved modules as warnings
           logger.warn(`Module "${module}" couldn't be resolved from "${file}"`);
         }
       } else if (warning.message.startsWith("Failed to parse")) {
-        // 跳过解析错误
+        // Skip parse errors
         continue;
       } else {
-        // 其他警告记录为警告
+        // Log other warnings from NFT
         logger.warn(`NFT warning: ${warning.message}`);
       }
+    }
+
+    // Emit a single aggregated message if any matched modules exist
+    if (aggregatedModules.size > 0) {
+      const modulesList = Array.from(aggregatedModules).sort().join(', ');
+      logger.warn(
+        `Astro Image (sharp) is not supported on EdgeOne Pages runtime. The following optional image modules were skipped: ${modulesList}.`
+      );
     }
     
     const packageNames = new Set<string>();
     
-    // 提取包名（不拷贝文件）
+    // Extract package names (do not copy files here)
     for (const file of fileList) {
       if (file.startsWith('node_modules/')) {
         const parts = file.split('/');
         if (parts[1].startsWith('@')) {
-          // scoped package: @scope/name
+          // Scoped package: @scope/name
           if (parts.length >= 3) {
             packageNames.add(`${parts[1]}/${parts[2]}`);
           }
         } else {
-          // regular package: name
+          // Regular package: name
           packageNames.add(parts[1]);
         }
       }
@@ -107,7 +123,7 @@ export async function analyzeDependencies(
 }
 
 /**
- * 拷贝依赖包
+ * Copy dependencies
  */
 export async function copyDependencies(
   rootDir: string,
@@ -124,17 +140,17 @@ export async function copyDependencies(
     const sourcePath = join(rootDir, file);
     const targetPath = join(serverDir, file);
     
-    // 跳过已经在 server-handler 目录中的文件
+  // Skip files already under the server-handler directory
     if (sourcePath.startsWith(serverDir)) {
       continue;
     }
     
-    // 只处理 node_modules 和 package.json 文件
+  // Only process node_modules and package.json files
     if (!file.startsWith('node_modules/') && !file.endsWith('package.json')) {
       continue;
     }
     
-    // 应用 excludeFiles 模式
+  // Apply excludeFiles patterns
     if (excludeFiles.length > 0) {
       const shouldExclude = excludeFiles.some(pattern => {
         const regex = new RegExp(pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'));
@@ -152,16 +168,16 @@ export async function copyDependencies(
         copiedFiles.add(file);
         fileCount++;
       } catch (e) {
-        // 忽略单个文件拷贝失败
+        // Ignore individual file copy errors
       }
     }
   }
   
-  // 处理 includeFiles - 强制包含指定的文件（从项目根目录）
+  // Handle includeFiles - force include patterns (from project root)
   if (includeFiles.length > 0) {
     const additionalFiles = new Set<string>();
     
-    // 使用 glob 查找匹配的文件
+    // Use glob to find matched files
     for (const pattern of includeFiles) {
       try {
         const matched = globSync(pattern, { cwd: rootDir, absolute: false });
@@ -171,7 +187,7 @@ export async function copyDependencies(
       }
     }
     
-    // 复制额外的文件
+    // Copy additional files
     for (const file of additionalFiles) {
       if (!copiedFiles.has(file)) {
         const sourcePath = join(rootDir, file);

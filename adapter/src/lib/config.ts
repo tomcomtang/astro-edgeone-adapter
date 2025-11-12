@@ -1,5 +1,5 @@
 /**
- * 配置文件生成模块
+ * Configuration generation utilities.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { join, posix } from 'node:path';
 import type { MetaConfig, RouteConfig } from './types.js';
 
 /**
- * 创建简化的 server-handler package.json（只包含 type: module）
+ * Create a minimal server-handler package.json (type: module only)
  */
 export function createSimpleServerPackageJson(serverDir: string): void {
   const serverPackageJson = {
@@ -24,8 +24,8 @@ export function createSimpleServerPackageJson(serverDir: string): void {
 }
 
 /**
- * 转换路由段为路径模式（用于 redirects 的 source 和 destination）
- * 参考 Vercel 适配器的 getMatchPattern 函数
+ * Convert a route segment into a path pattern (for redirects source/destination).
+ * Based on the Vercel adapter's getMatchPattern function.
  */
 const ROUTE_DYNAMIC_SPLIT = /\[(.+?\(.+?\)|.+?)\]/;
 const ROUTE_SPREAD = /^\.{3}.+$/;
@@ -69,7 +69,7 @@ function getMatchPattern(segments: any[][]): string {
 }
 
 /**
- * 获取重定向目标路径
+ * Get redirect destination path.
  */
 function getRedirectLocation(route: any, base: string): string {
   if (route.redirectRoute) {
@@ -77,7 +77,7 @@ function getRedirectLocation(route: any, base: string): string {
     return posix.join(base, pattern).replace(/\/\//g, '/');
   }
   const destination = typeof route.redirect === 'object' ? route.redirect.destination : route.redirect ?? '';
-  // 检查是否是远程路径（以 http:// 或 https:// 开头）
+  // Check if it's a remote URL (starts with http:// or https://)
   if (destination.startsWith('http://') || destination.startsWith('https://')) {
     return destination;
   }
@@ -85,7 +85,7 @@ function getRedirectLocation(route: any, base: string): string {
 }
 
 /**
- * 获取重定向状态码
+ * Get redirect status code.
  */
 function getRedirectStatus(route: any): number {
   if (typeof route.redirect === 'object') {
@@ -95,30 +95,30 @@ function getRedirectStatus(route: any): number {
 }
 
 /**
- * 从路由段生成源路径模式（用于 redirects）
+ * Build a source path pattern from route segments (for redirects).
  */
 function getRedirectSource(route: any, base: string): string {
   if (route.segments) {
     const pattern = getMatchPattern(route.segments);
     return posix.join(base, pattern).replace(/\/\//g, '/');
   }
-  // 如果没有 segments，使用 route.route 作为 fallback
+  // If no segments exist, fall back to route.route
   return posix.join(base, route.route || '').replace(/\/\//g, '/');
 }
 
 /**
- * 生成 meta.json 配置文件
+ * Generate meta.json config file.
  */
 /**
- * 转换 Astro 路由为正则表达式（参考 Vercel）
- * @param route - 路由路径
- * @param trailingSlash - trailingSlash 配置：true=总是需要, false=不要, undefined=可选
+ * Convert Astro route to regex (aligned with Vercel).
+ * @param route - route path
+ * @param trailingSlash - trailingSlash config: true=require, false=forbid, undefined=optional
  */
 function convertRouteToRegex(route: string): string {
-  // Fallback 函数：只有当 route.pattern 不存在时才会用到
-  // 默认使用可选尾部斜杠（/?$）
+  // Fallback logic: used only when route.pattern is not available
+  // Use optional trailing slash by default (/?$)
   
-  // 动态路由转换
+  // Dynamic route conversion
   if (route.includes('[')) {
     // /blog/[...slug] → ^/blog(?:/(.*?))?/?$
     if (route.includes('[...')) {
@@ -130,12 +130,12 @@ function convertRouteToRegex(route: string): string {
     return `^${basePath}([^/]+?)/?$`;
   }
   
-  // 普通路由
+  // Static route
   if (route === '/') {
     return '^/$';
   }
   
-  // 默认使用可选尾部斜杠
+  // Default to optional trailing slash
   return `^${route}/?$`;
 }
 
@@ -145,10 +145,10 @@ export function createMetaConfig(
   serverHandlerDir: string,
   config?: { base?: string }
 ): void {
-  // 提取 redirect 路由
+  // Extract redirect routes
   const redirectRoutes = routes.filter((route) => route.type === 'redirect');
   
-  // 处理 redirects
+  // Build redirects
   const redirects = redirectRoutes.map((route) => {
     const base = config?.base || '/';
     return {
@@ -158,7 +158,7 @@ export function createMetaConfig(
     };
   });
 
-  // 过滤掉 redirect 路由，只保留普通路由
+  // Keep only non-redirect routes
   const normalRoutes = routes.filter((route) => route.type !== 'redirect');
 
   const metaData: MetaConfig = {
@@ -169,25 +169,25 @@ export function createMetaConfig(
     },
     has404: false,
     nextRoutes: normalRoutes.map(route => {
-      // 完全对齐 Vercel 适配器：直接使用 route.patternRegex.source，不做任何修改
-      // Vercel 适配器代码：src: route.patternRegex.source
+      // Align with Vercel adapter: use route.patternRegex.source as-is
+      // Vercel adapter reference: src: route.patternRegex.source
       let pattern: string;
       
       if (route.pattern) {
-        // 直接使用 Astro 生成的 pattern，只移除转义以便 JSON 序列化
+        // Use Astro-generated pattern; remove escapes for JSON serialization
         pattern = route.pattern.source.replace(/\\\//g, '/');
       } else {
-        // 如果没有 route.pattern，使用 fallback 转换（但通常 Astro 都会提供 pattern）
+        // If route.pattern is missing, fall back to conversion (normally Astro provides pattern)
         pattern = convertRouteToRegex(route.route);
         pattern = pattern.replace(/\\\//g, '/');
       }
       
       const routeConfig: RouteConfig = {
-        // 使用正则表达式
+        // Use regex pattern
         path: pattern,
       };
       
-      // 如果是静态路由（预渲染），添加isStatic标识
+      // If prerendered, mark as static
       if (route.prerender) {
         routeConfig.isStatic = true;
         routeConfig.srcRoute = route.route;
@@ -197,14 +197,14 @@ export function createMetaConfig(
     }),
   };
 
-  // 生成到 server-handler 目录（仅当目录存在时）
-  // 注意：serverHandlerDir 可能与 edgeoneDir 相同（static 模式）
+  // Write to server-handler directory (SSR only, when directory exists)
+  // Note: serverHandlerDir may equal edgeoneDir in static mode
   if (serverHandlerDir !== edgeoneDir && existsSync(serverHandlerDir)) {
     const serverMetaPath = join(serverHandlerDir, 'meta.json');
     writeFileSync(serverMetaPath, JSON.stringify(metaData, null, 2));
   }
   
-  // 同时也生成到 .edgeone 目录
+  // Also write to .edgeone directory
   const edgeoneMetaPath = join(edgeoneDir, 'meta.json');
   writeFileSync(edgeoneMetaPath, JSON.stringify(metaData, null, 2));
 }
