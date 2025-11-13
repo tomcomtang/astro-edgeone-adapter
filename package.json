@@ -16,8 +16,6 @@
     "@astrojs/svelte": "^7.2.0",
     "@astrojs/vercel": "^8.2.10",
     "@astrojs/vue": "^5.1.1",
-    "@tencent/astro-framework-detect": "^1.0.3",
-    "@tencent/edgeone-astro-adapter": "^1.0.3",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "astro": "^5.14.6",

@@ -7,8 +7,6 @@ import vue from '@astrojs/vue';
 import { defineConfig } from 'astro/config';
 
 import svelte from '@astrojs/svelte';
-// import edgeoneAdapter from '@tencent/edgeone-astro-adapter';
-// import vercelAdapter from '@astrojs/vercel';
 import edgeoneAdapter from './adapter/src/index.ts';
 
 // https://astro.build/config
