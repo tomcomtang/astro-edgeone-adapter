@@ -143,7 +143,7 @@ export function createMetaConfig(
   routes: any[],
   edgeoneDir: string,
   serverHandlerDir: string,
-  config?: { base?: string }
+  config?: { base?: string; buildOutput?: 'static' | 'server' }
 ): void {
   // Extract redirect routes
   const redirectRoutes = routes.filter((route) => route.type === 'redirect');
@@ -161,14 +161,53 @@ export function createMetaConfig(
   // Keep only non-redirect routes
   const normalRoutes = routes.filter((route) => route.type !== 'redirect');
 
+  // Check for 404 page (404.astro or 404.ts)
+  const fourOhFourRoute = normalRoutes.find((route) => route.pathname === '/404');
+  
+  // Determine has404 and ssr404 based on 404 page existence and prerender status
+  // has404: whether there's a 404 page in static files or SSR rendering
+  // ssr404: whether SSR rendering includes 404 handling
+  let has404 = false;
+  let ssr404 = false;
+  
+  const buildOutput = config?.buildOutput || 'server'; // Default to server mode when called
+  
+  if (fourOhFourRoute) {
+    // Custom 404 page exists
+    has404 = true;
+    if (fourOhFourRoute.prerender) {
+      // Prerendered 404 page: exists in static files, but not SSR
+      ssr404 = false;
+    } else {
+      // SSR 404 page: exists in SSR rendering
+      ssr404 = true;
+    }
+  } else {
+    // No custom 404 page
+    if (buildOutput === 'server') {
+      // In SSR mode, Astro has default 404 handling (returns 404 response when no route matches)
+      // So SSR rendering includes 404 handling, but no static 404 file
+      has404 = true;  // SSR has 404 handling capability
+      ssr404 = true;  // SSR rendering includes 404 handling
+    } else {
+      // In static mode, no 404 handling without custom 404 page
+      has404 = false;
+      ssr404 = false;
+    }
+  }
+
   const metaData: MetaConfig = {
     conf: {
       headers: [],
       redirects,
-      has404: false,
+      has404,
+      ssr404,
     },
-    has404: false,
-    nextRoutes: normalRoutes.map(route => {
+    frameworkRoutes: normalRoutes
+      // Only exclude prerendered 404 routes from frameworkRoutes
+      // SSR 404 routes should be included (aligned with Vercel adapter behavior)
+      .filter((route) => !(route.pathname === '/404' && route.prerender))
+      .map(route => {
       // Align with Vercel adapter: use route.patternRegex.source as-is
       // Vercel adapter reference: src: route.patternRegex.source
       let pattern: string;

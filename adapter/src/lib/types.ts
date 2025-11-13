@@ -33,9 +33,9 @@ export interface MetaConfig {
       statusCode: number;
     }>;
     has404: boolean;
+    ssr404: boolean;
   };
-  has404: boolean;
-  nextRoutes: RouteConfig[];
+  frameworkRoutes: RouteConfig[];
 }
 
 export interface RouteConfig {

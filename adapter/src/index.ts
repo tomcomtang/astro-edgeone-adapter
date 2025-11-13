@@ -159,7 +159,8 @@ export default function edgeoneAdapter(
         // Fully aligned with the Vercel adapter: use route.patternRegex.source, do not pass trailingSlash
         if (_buildOutput === 'server') {
           createMetaConfig(routes, edgeoneDir, serverDir, {
-            base: _config.base || '/'
+            base: _config.base || '/',
+            buildOutput: _buildOutput
           });
         }
         // No meta.json needed in static mode
