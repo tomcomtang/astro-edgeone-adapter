@@ -23,32 +23,6 @@ export function createSimpleServerPackageJson(serverDir: string): void {
   );
 }
 
-/**
- * Convert a route segment into a path pattern (for redirects source/destination).
- * Based on the Vercel adapter's getMatchPattern function.
- */
-const ROUTE_DYNAMIC_SPLIT = /\[(.+?\(.+?\)|.+?)\]/;
-const ROUTE_SPREAD = /^\.{3}.+$/;
-
-function getParts(part: string, file: string) {
-  const result: Array<{ content: string; dynamic: boolean; spread: boolean }> = [];
-  part.split(ROUTE_DYNAMIC_SPLIT).forEach((str, i) => {
-    if (!str) return;
-    const dynamic = i % 2 === 1;
-    const match = dynamic ? /([^(]+)$/.exec(str) : null;
-    const content = dynamic ? (match ? match[1] : null) : str;
-    if (!content || (dynamic && !/^(?:\.\.\.)?[\w$]+$/.test(content))) {
-      throw new Error(`Invalid route ${file} — parameter name must match /^[a-zA-Z0-9_$]+$/`);
-    }
-    result.push({
-      content,
-      dynamic,
-      spread: dynamic && ROUTE_SPREAD.test(content)
-    });
-  });
-  return result;
-}
-
 function getMatchPattern(segments: any[][]): string {
   return segments
     .map((segment) => {
@@ -165,7 +139,7 @@ export function createMetaConfig(
   const fourOhFourRoute = normalRoutes.find((route) => route.pathname === '/404');
   
   // Determine has404 and ssr404 based on 404 page existence and prerender status
-  // has404: whether there's a 404 page in static files or SSR rendering
+  // has404: whether there's a 404 page in static files (only true for prerendered 404)
   // ssr404: whether SSR rendering includes 404 handling
   let has404 = false;
   let ssr404 = false;
@@ -174,12 +148,13 @@ export function createMetaConfig(
   
   if (fourOhFourRoute) {
     // Custom 404 page exists
-    has404 = true;
     if (fourOhFourRoute.prerender) {
-      // Prerendered 404 page: exists in static files, but not SSR
+      // Prerendered 404 page: exists in static files
+      has404 = true;
       ssr404 = false;
     } else {
-      // SSR 404 page: exists in SSR rendering
+      // SSR 404 page: exists in SSR rendering, but not in static files
+      has404 = false;
       ssr404 = true;
     }
   } else {
@@ -187,8 +162,8 @@ export function createMetaConfig(
     if (buildOutput === 'server') {
       // In SSR mode, Astro has default 404 handling (returns 404 response when no route matches)
       // So SSR rendering includes 404 handling, but no static 404 file
-      has404 = true;  // SSR has 404 handling capability
-      ssr404 = true;  // SSR rendering includes 404 handling
+      has404 = false;  // No static 404 file
+      ssr404 = true;   // SSR rendering includes 404 handling
     } else {
       // In static mode, no 404 handling without custom 404 page
       has404 = false;
@@ -223,7 +198,7 @@ export function createMetaConfig(
       
       const routeConfig: RouteConfig = {
         // Use regex pattern
-        path: pattern,
+        regexPath: pattern,
       };
       
       // If prerendered, mark as static

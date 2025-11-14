@@ -39,7 +39,7 @@ export interface MetaConfig {
 }
 
 export interface RouteConfig {
-  path: string;
+  regexPath: string;
   isStatic?: boolean;
   srcRoute?: string;
   dataRoute?: string;

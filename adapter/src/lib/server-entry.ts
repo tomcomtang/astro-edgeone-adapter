@@ -23,43 +23,13 @@ export function createServerEntryFile(
  */
 function generateServerEntryContent(serverEntryFile: string, port: number): string {
   return `import { createServer } from 'http';
-import { webcrypto } from 'crypto';
+import crypto from 'node:crypto';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Ensure Web Crypto is available before loading Astro handler
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto;
-}
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = ${port};
-
-// Basic MIME type detection for static asset fallback
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'application/javascript',
-  '.mjs': 'application/javascript',
-  '.json': 'application/json',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.ico': 'image/x-icon',
-};
-
-function getMimeType(filePath) {
-  const ext = extname(filePath).toLowerCase();
-  return MIME_TYPES[ext] || 'application/octet-stream';
-}
 
 async function readRequestBody(req) {
   return new Promise((resolve, reject) => {
