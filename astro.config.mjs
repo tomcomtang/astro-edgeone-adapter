@@ -8,6 +8,7 @@ import { defineConfig } from 'astro/config';
 
 import svelte from '@astrojs/svelte';
 import edgeoneAdapter from './adapter/src/index.ts';
+// import edgeoneAdapter from '@tencent/edgeone-astro-adapter';
 
 // https://astro.build/config
 export default defineConfig({

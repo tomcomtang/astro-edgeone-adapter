@@ -2,15 +2,10 @@
  * Server entry file generation utilities
  */
 
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { DEFAULT_PORT } from './constants.js';
-
-const BOOTSTRAP_TEMPLATE = readFileSync(
-  fileURLToPath(new URL('../static/bootstrap.js.txt', import.meta.url)),
-  'utf8'
-);
+import { BOOTSTRAP_TEMPLATE } from '../static/bootstrap-template.js';
 
 /**
  * Create server entry file index.mjs
