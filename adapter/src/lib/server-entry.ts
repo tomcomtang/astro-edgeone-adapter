@@ -2,9 +2,15 @@
  * Server entry file generation utilities
  */
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_PORT } from './constants.js';
+
+const BOOTSTRAP_TEMPLATE = readFileSync(
+  fileURLToPath(new URL('../static/bootstrap.js.txt', import.meta.url)),
+  'utf8'
+);
 
 /**
  * Create server entry file index.mjs
@@ -16,7 +22,17 @@ export function createServerEntryFile(
 ): void {
   const indexContent = generateServerEntryContent(serverEntryFile, port);
   writeFileSync(join(serverDir, 'index.mjs'), indexContent);
+  createBootstrapFile(serverDir);
 }
+
+/**
+ * Create bootstrap helper file
+ */
+export function createBootstrapFile(serverDir: string): void {
+  writeFileSync(join(serverDir, 'bootstrap.js'), BOOTSTRAP_TEMPLATE);
+}
+
+
 
 /**
  * Generate server entry file content
@@ -27,9 +43,7 @@ import crypto from 'node:crypto';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const port = ${port};
+import { createFrameworkServer } from './bootstrap.js';
 
 async function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -114,7 +128,7 @@ async function handleResponse(res, response) {
 
 const handlerPromise = import('./${serverEntryFile}');
 
-const server = createServer(async (req, res) => {
+async  function astroHandler (req, res) {
   const requestStart = Date.now();
   try {
     const host = req.headers.host || 'localhost';
@@ -138,21 +152,17 @@ const server = createServer(async (req, res) => {
     const request = new Request(url.toString(), requestInit);
     const response = await handler(request);
 
-    await handleResponse(res, response);
-
-    const requestEnd = Date.now();
-    console.log('Request path:', url.pathname, '- duration:', requestEnd - requestStart, 'ms');
+    // await handleResponse(res, response);
+    return response;
   } catch (error) {
     console.error('SSR Error:', error);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.end('<html><body><h1>Error</h1><p>' + error.message + '</p></body></html>');
   }
-});
+}
 
-server.listen(port, () => {
-  console.log('Server is running on http://localhost:' + port);
-});
+createFrameworkServer(astroHandler);
 `;
 }
 

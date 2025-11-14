@@ -16,9 +16,9 @@ import {
 import { analyzeDependencies, copyDependencies } from './lib/dependencies.js';
 import { createSimpleServerPackageJson, createMetaConfig } from './lib/config.js';
 import { optimizeNodeModules } from './lib/optimizer.js';
-import { createServerEntryFile } from './lib/server-entry.js';
 import { cleanOutputDirectory } from './lib/clean.js';
 import type { EdgeOneAdapterOptions } from './lib/types.js';
+import { createServerEntryFile } from './lib/server-entry.js';
 
 /**
  * Get adapter configuration
