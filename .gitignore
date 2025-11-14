@@ -31,4 +31,4 @@ pnpm-debug.log*
 .tef_dist/*
 .vscode/*
 .netlify/*
-.vercel/*
+package-lock.json
