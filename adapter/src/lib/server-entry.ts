@@ -5,7 +5,6 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_PORT } from './constants.js';
-import { BOOTSTRAP_TEMPLATE } from '../static/bootstrap-template.js';
 
 /**
  * Create server entry file index.mjs
@@ -16,15 +15,7 @@ export function createServerEntryFile(
   port: number = DEFAULT_PORT
 ): void {
   const indexContent = generateServerEntryContent(serverEntryFile, port);
-  writeFileSync(join(serverDir, 'index.mjs'), indexContent);
-  createBootstrapFile(serverDir);
-}
-
-/**
- * Create bootstrap helper file
- */
-export function createBootstrapFile(serverDir: string): void {
-  writeFileSync(join(serverDir, 'bootstrap.js'), BOOTSTRAP_TEMPLATE);
+  writeFileSync(join(serverDir, 'handler.js'), indexContent);
 }
 
 
@@ -33,13 +24,7 @@ export function createBootstrapFile(serverDir: string): void {
  * Generate server entry file content
  */
 function generateServerEntryContent(serverEntryFile: string, port: number): string {
-  return `import { createServer } from 'http';
-import crypto from 'node:crypto';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
-import { createFrameworkServer } from './bootstrap.js';
-
+  return `
 async function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -58,73 +43,9 @@ async function readRequestBody(req) {
   });
 }
 
-async function handleResponse(res, response) {
-  const startTime = Date.now();
-
-  if (!response) {
-    res.writeHead(404);
-    res.end(JSON.stringify({
-      error: 'Route Not Found',
-      message: 'The requested path does not match any route in Astro',
-    }));
-    return;
-  }
-
-  try {
-    if (response instanceof Response) {
-      const headers = Object.fromEntries(response.headers);
-
-      const isStream = response.body && (
-        response.headers.get('content-type')?.includes('text/event-stream') ||
-        response.headers.get('transfer-encoding')?.includes('chunked') ||
-        typeof response.body.pipe === 'function'
-      );
-
-      if (isStream) {
-        res.writeHead(response.status, headers);
-        if (typeof response.body.pipe === 'function') {
-          response.body.pipe(res);
-        } else {
-          const reader = response.body.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              res.write(value);
-            }
-          } finally {
-            reader.releaseLock();
-            res.end();
-          }
-        }
-        return;
-      }
-
-      const buffer = Buffer.from(await response.arrayBuffer());
-
-      res.writeHead(response.status, headers);
-      res.end(buffer);
-    } else {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(response));
-    }
-  } catch (error) {
-    console.error('HandleResponse error', error);
-    res.writeHead(500);
-    res.end(JSON.stringify({
-      error: 'Internal Server Error',
-      message: error.message,
-    }));
-  } finally {
-    const endTime = Date.now();
-    console.log('HandleResponse duration:', endTime - startTime, 'ms');
-  }
-}
-
 const handlerPromise = import('./${serverEntryFile}');
 
 async  function astroHandler (req, res) {
-  const requestStart = Date.now();
   try {
     const host = req.headers.host || 'localhost';
     const proto = req.headers['x-forwarded-proto'] || 'https';
@@ -157,7 +78,7 @@ async  function astroHandler (req, res) {
   }
 }
 
-createFrameworkServer(astroHandler);
+export default astroHandler;
 `;
 }
 

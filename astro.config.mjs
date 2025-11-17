@@ -16,7 +16,7 @@ export default defineConfig({
     output: 'server', // server 模式
     // adapter: vercelAdapter(),
     adapter: edgeoneAdapter(),
-    integrations: [mdx(), sitemap(), react(), vue(), svelte()],
+    integrations: [mdx(), sitemap(), react(), vue(), svelte()]
     // trailingSlash: 'ignore',
     // outDir: 'build',
     // redirects: {

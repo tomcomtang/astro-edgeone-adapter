@@ -2,7 +2,7 @@
  * Adapter constants.
  */
 
-export const PACKAGE_NAME = '@edgeone/astro-adapter';
+export const PACKAGE_NAME = '@edgeone/astro';
 
 export const DEFAULT_PORT = 9000;
 
@@ -14,5 +14,5 @@ export const SERVER_HANDLER_DIR = 'server-handler';
 
 export const META_FILE = 'meta.json';
 
-export const SERVER_ENTRY_FILE = 'index.mjs';
+export const SERVER_ENTRY_FILE = 'handler.mjs';
 

@@ -91,11 +91,10 @@ npm run build
    - 测试文件和目录
    - 示例代码
 
-4. **服务器入口**: 自动生成 `index.mjs` 启动文件
-   - 监听端口 9000
-   - 支持流式响应
-   - 完整的错误处理
-   - Web Crypto API polyfill
+4. **服务器入口**: 自动生成 `handler.mjs` 入口文件
+   - 直接引用 Astro 构建产物中的 `__astrojsSsrVirtualEntry`
+   - 导出 EdgeOne Pages 所需的 `handler` 对象
+   - 不再需要在适配器侧维护额外的 Node.js 启动逻辑
 
 ### 性能对比
 
@@ -107,14 +106,8 @@ npm run build
 
 ## 本地测试
 
-构建完成后，可以在本地启动服务器测试：
-
-```bash
-cd .edgeone/server-handler
-node index.mjs
-```
-
-服务器将在 `http://localhost:9000` 启动。
+构建完成后，`.edgeone/server-handler/handler.mjs` 会导出可部署到 EdgeOne Pages 的 `handler`。
+如需本地验证页面效果，请继续使用 `astro dev` 或 `astro preview`。
 
 ## 部署到 EdgeOne Pages
 
